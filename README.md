@@ -2,6 +2,8 @@
 
 Generates a Markdown mirror of your entire WordPress site for AI/LLM consumption. Serves content via `Accept: text/markdown` header and generates `llms.txt`.
 
+![Admin Dashboard](assets/screenshots/administration_screen.jpg)
+
 ## Description
 
 MarkdownPress automatically generates Markdown versions of all your WordPress content and serves them to AI crawlers and LLM tools.
@@ -65,12 +67,23 @@ An emerging standard for describing your website to AI tools (see [llmstxt.org](
 
 ## Changelog
 
+### 1.2.4
+- Integrated self-hosted update system (`plugin-update-checker`).
+- Added standard `index.php` security files to all directories.
+- Updated documentation: Only admin settings are stored in the database; no generation data is kept there, making cleanup easy (just delete the cache folder).
+
 ### 1.2.3
 - Forced absolute URLs for all images in Markdown output for better AI compatibility.
 
 ### 1.2.2
 - Added "Stop Generation" button to halt active processing.
 - Fixed button icon alignment in the admin interface.
+
+## Technical Notes
+
+- **Database**: The plugin stores **only** administrative settings and basic status in the `{wp_prefix}_options` table. No content or generation data is stored in the database.
+- **Cleanup**: To completely remove all trace of generated content, simply delete the `wp-content/markdownpress/` directory.
+- **Updates**: This plugin uses a self-hosted update server at `vyladeny-web.cz`.
 
 ### 1.2.1
 - Added help text explaining how to serve Markdown via HTTP `Accept` header.
