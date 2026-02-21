@@ -380,6 +380,34 @@ class WPMC_Admin
                     <strong>Cache directory:</strong> <code><?php echo esc_html(WPMC_CACHE_DIR); ?></code>
                 </p>
 
+                <?php
+                $has_htaccess = WPMC_Htaccess::has_rules();
+                $is_apache = isset($_SERVER['SERVER_SOFTWARE']) && (
+                    stripos($_SERVER['SERVER_SOFTWARE'], 'apache') !== false ||
+                    stripos($_SERVER['SERVER_SOFTWARE'], 'litespeed') !== false
+                );
+                ?>
+                <div class="wpmc-cache-dir-info" style="margin-top: 8px;">
+                    <strong>Fast serving:</strong>
+                    <?php if ($has_htaccess): ?>
+                        <span style="color: #00a32a;">✅ Active (.htaccess rules installed)</span>
+                        <p class="description">Markdown files are served directly by Apache — no PHP/WordPress overhead (~2ms
+                            response).</p>
+                    <?php elseif ($is_apache): ?>
+                        <span style="color: #dba617;">⚠️ Not active</span>
+                        <p class="description">.htaccess is not writable. <a href="#"
+                                onclick="WPMC_Htaccess.add_rules(); return false;">Try to install rules</a> or add them manually.
+                            Files are served via PHP fallback (~50-200ms).</p>
+                    <?php else: ?>
+                        <span style="color: #72777c;">ℹ️ Nginx detected — PHP fallback active</span>
+                        <details style="margin-top: 8px;">
+                            <summary>Show Nginx config snippet</summary>
+                            <pre
+                                style="background: #1d2327; color: #c3c4c7; padding: 12px; border-radius: 4px; overflow-x: auto; margin-top: 8px;"><?php echo esc_html(WPMC_Htaccess::get_nginx_config()); ?></pre>
+                        </details>
+                    <?php endif; ?>
+                </div>
+
                 <?php submit_button('Save Settings'); ?>
             </form>
         </div>

@@ -32,6 +32,7 @@ require_once WPMC_PLUGIN_DIR . 'includes/class-converter.php';
 require_once WPMC_PLUGIN_DIR . 'includes/class-generator.php';
 require_once WPMC_PLUGIN_DIR . 'includes/class-server.php';
 require_once WPMC_PLUGIN_DIR . 'includes/class-llms-txt.php';
+require_once WPMC_PLUGIN_DIR . 'includes/class-htaccess.php';
 require_once WPMC_PLUGIN_DIR . 'admin/class-admin.php';
 
 /* ───────────────────────────── Bootstrap ───────────────────────────── */
@@ -85,6 +86,9 @@ function wpmc_activate()
     if (false === get_option('wpmc_options')) {
         update_option('wpmc_options', array(), false);
     }
+
+    // Insert .htaccess rewrite rules for fast serving (Apache/LiteSpeed).
+    WPMC_Htaccess::add_rules();
 }
 register_activation_hook(__FILE__, 'wpmc_activate');
 
@@ -95,6 +99,9 @@ function wpmc_deactivate()
 {
     wp_clear_scheduled_hook('wpmc_cron_generate');
     wp_clear_scheduled_hook('wpmc_cron_batch');
+
+    // Remove .htaccess rules.
+    WPMC_Htaccess::remove_rules();
 }
 register_deactivation_hook(__FILE__, 'wpmc_deactivate');
 
