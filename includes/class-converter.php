@@ -1,7 +1,7 @@
 <?php
 /**
  * Converts individual WordPress content items (posts, pages, terms, authors)
- * to Markdown files and stores them in the cache directory.
+ * to Markdown files and stores them in the markdown files directory.
  *
  * Uses apply_filters('the_content') for builder compatibility.
  * Falls back to HTTP fetch if needed.
@@ -15,6 +15,18 @@ if (!defined('ABSPATH')) {
 
 class MDP_Converter
 {
+    /**
+     * Store the last error message.
+     */
+    private $last_error = '';
+
+    /**
+     * Get the last error message.
+     */
+    public function get_last_error()
+    {
+        return $this->last_error;
+    }
 
     /**
      * Convert a single post/page/CPT to markdown and save it.
@@ -26,6 +38,7 @@ class MDP_Converter
     {
         $post = get_post($post_id);
         if (!$post || $post->post_status !== 'publish') {
+            $this->last_error = "Post not found or not published.";
             return false;
         }
 
@@ -34,18 +47,21 @@ class MDP_Converter
         // Check if this post type should be processed.
         $allowed_types = $this->get_allowed_post_types();
         if (!in_array($post->post_type, $allowed_types, true)) {
+            $this->last_error = "Post type '{$post->post_type}' is not allowed in settings.";
             return false;
         }
 
         // Check exclusion.
         $permalink = get_permalink($post_id);
         if ($this->is_excluded($permalink)) {
+            $this->last_error = "URL is excluded by rules.";
             return false;
         }
 
         // Get rendered content.
         $html = $this->get_rendered_content($post, $options['content_method']);
-        if (empty($html)) {
+        if (empty(trim(strip_tags($html)))) {
+            $this->last_error = "Rendered content is empty (tried method: {$options['content_method']}).";
             return false;
         }
 
@@ -70,7 +86,11 @@ class MDP_Converter
         }
 
         // Write file.
-        return (bool) file_put_contents($file_path, $full_content);
+        $result = (bool) file_put_contents($file_path, $full_content);
+        if (!$result) {
+            $this->last_error = "Could not write file to: {$file_path}";
+        }
+        return $result;
     }
 
     /**
@@ -381,7 +401,7 @@ class MDP_Converter
     /* ───────────────────────────── Helpers ───────────────────────────── */
 
     /**
-     * Convert a URL to a file path in the cache directory.
+     * Convert a URL to a file path in the markdown files directory.
      * Example: https://example.com/about/team/ → wp-markdown/about/team/index.md
      */
     public function url_to_cache_path($url)

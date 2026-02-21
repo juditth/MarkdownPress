@@ -3,7 +3,7 @@
  * Plugin Name: MarkdownPress
  * Plugin URI:  https://github.com/juditth/wordpress-to-markdown
  * Description: Creates a markdown mirror of your WordPress site. Serves content via Accept: text/markdown header, generates llms.txt for AI crawlers.
- * Version:     1.1.0
+ * Version:     1.2.0
  * Author:      Jitka Klingenbergová
  * Author URI:  https://vyladeny-web.cz/
  * License:     GPLv2 or later
@@ -16,14 +16,14 @@ if (!defined('ABSPATH')) {
 
 /* ───────────────────────────── Constants ───────────────────────────── */
 
-define('MDP_VERSION', '1.1.0');
+define('MDP_VERSION', '1.2.0');
 define('MDP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MDP_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('MDP_PLUGIN_FILE', __FILE__);
 
 // Where the markdown files live — inside wp-content/ for guaranteed write permissions.
 // Use filter 'mdp_cache_dir' to override in wp-config.php or a mu-plugin if needed.
-define('MDP_CACHE_DIR', apply_filters('mdp_cache_dir', WP_CONTENT_DIR . '/wp-markdown/'));
+define('MDP_CACHE_DIR', apply_filters('mdp_cache_dir', WP_CONTENT_DIR . '/markdownpress/'));
 
 /* ───────────────────────────── Includes ───────────────────────────── */
 
@@ -68,7 +68,7 @@ function mdp_get_options()
  */
 function mdp_activate()
 {
-    // Create cache directory.
+    // Create markdown files directory.
     if (!file_exists(MDP_CACHE_DIR)) {
         wp_mkdir_p(MDP_CACHE_DIR);
     }
@@ -79,16 +79,32 @@ function mdp_activate()
         file_put_contents($htaccess, "Options -Indexes\n");
     }
 
-    // Schedule initial cron.
-    mdp_schedule_cron();
-
-    // Set default options.
-    if (false === get_option('mdp_options')) {
-        update_option('mdp_options', array(), false);
-    }
-
     // Insert .htaccess rewrite rules for fast serving (Apache/LiteSpeed).
     MDP_Htaccess::add_rules();
+
+    // Check for existing settings.
+    $old_options = get_option('wpmc_options');
+    $current_options = get_option('mdp_options');
+
+    // MIGRATION: If old settings exist and no new settings are found, migrate them.
+    if ($old_options && (false === $current_options || empty($current_options))) {
+        $new_options = array();
+        foreach ($old_options as $key => $val) {
+            $new_key = $key;
+            if ($key === 'schedule_time')
+                $new_key = 'cron_time';
+            if ($key === 'include_tax')
+                $new_key = 'include_taxonomies';
+            $new_options[$new_key] = $val;
+        }
+        update_option('mdp_options', $new_options);
+        $current_options = $new_options;
+    }
+
+    // INITIALIZE: If still no settings, save defaults.
+    if (false === $current_options) {
+        update_option('mdp_options', mdp_get_options());
+    }
 }
 register_activation_hook(__FILE__, 'mdp_activate');
 
@@ -199,8 +215,8 @@ add_action('delete_post', function ($post_id) {
 
 /* ───────────────────────────── Markdown serving ───────────────────────────── */
 
-// This must run VERY early.
-add_action('plugins_loaded', array('MDP_Server', 'init'), 1);
+// This must run early, but after most core functions are available.
+add_action('plugins_loaded', array('MDP_Server', 'init'), 10);
 
 /* ───────────────────────────── Admin ───────────────────────────── */
 

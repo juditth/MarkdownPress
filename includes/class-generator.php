@@ -26,6 +26,11 @@ class MDP_Generator
         return MDP_CACHE_DIR . '_status.json';
     }
 
+    public static function get_error_log_file()
+    {
+        return MDP_CACHE_DIR . '_errors.log';
+    }
+
     /**
      * Queue all content items for markdown generation.
      * This doesn't generate anything — it just builds the queue.
@@ -41,7 +46,7 @@ class MDP_Generator
             $queue = $this->get_all_content_items();
         }
 
-        // Ensure cache directory exists.
+        // Ensure markdown files directory exists.
         if (!file_exists(MDP_CACHE_DIR)) {
             wp_mkdir_p(MDP_CACHE_DIR);
         }
@@ -55,6 +60,11 @@ class MDP_Generator
             'finished' => null,
             'errors' => 0,
         )));
+
+        // Clear old error log.
+        if (file_exists(self::get_error_log_file())) {
+            @unlink(self::get_error_log_file());
+        }
 
         return count($queue);
     }
@@ -108,6 +118,11 @@ class MDP_Generator
             $status['processed']++;
             if (!$success) {
                 $status['errors']++;
+
+                $label = $item['url'] ?? "ID: " . ($item['id'] ?? 'unknown');
+                $reason = $converter->get_last_error() ?: "Empty content or processing failure";
+
+                $this->log_error("Failed to process: [{$item['type']}] {$label} - Reason: {$reason}");
             }
         }
 
@@ -370,7 +385,7 @@ class MDP_Generator
     }
 
     /**
-     * Recursively scan cache directory for .md files.
+     * Recursively scan markdown files directory for .md files.
      */
     private function scan_cache_files($dir)
     {
@@ -469,7 +484,7 @@ class MDP_Generator
     }
 
     /**
-     * Clear the entire cache directory.
+     * Clear the entire markdown files directory.
      */
     public static function clear_cache()
     {
@@ -477,6 +492,17 @@ class MDP_Generator
             return;
         }
         self::delete_directory_contents(MDP_CACHE_DIR);
+    }
+
+    /**
+     * Log an error message to a file.
+     */
+    public function log_error($message)
+    {
+        $log_file = self::get_error_log_file();
+        $timestamp = current_time('mysql');
+        $entry = "[{$timestamp}] {$message}\n";
+        file_put_contents($log_file, $entry, FILE_APPEND);
     }
 
     /**

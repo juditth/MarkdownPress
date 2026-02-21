@@ -24,6 +24,9 @@ class MDP_Admin
         add_action('wp_ajax_mdp_clear_cache', array($this, 'ajax_clear_cache'));
         add_action('wp_ajax_mdp_get_status', array($this, 'ajax_get_status'));
 
+        // Handle ZIP download.
+        add_action('admin_init', array($this, 'handle_zip_download'));
+
         // Add settings link to plugins page.
         add_filter('plugin_action_links_' . plugin_basename(MDP_PLUGIN_FILE), array($this, 'add_settings_link'));
     }
@@ -134,7 +137,7 @@ class MDP_Admin
                         <div class="mdp-card-number">
                             <?php echo number_format($cache_files); ?>
                         </div>
-                        <div class="mdp-card-label">Cached files</div>
+                        <div class="mdp-card-label">Processed files</div>
                     </div>
                 </div>
                 <div class="mdp-card">
@@ -143,7 +146,7 @@ class MDP_Admin
                         <div class="mdp-card-number">
                             <?php echo size_format($cache_size); ?>
                         </div>
-                        <div class="mdp-card-label">Cache size</div>
+                        <div class="mdp-card-label">Markdown files folder size</div>
                     </div>
                 </div>
                 <div class="mdp-card">
@@ -192,6 +195,14 @@ class MDP_Admin
                     <a href="<?php echo home_url('/llms.txt'); ?>" target="_blank" class="button">
                         <span class="dashicons dashicons-external"></span>
                         View llms.txt
+                    </a>
+                <?php endif; ?>
+
+                <?php if ($cache_files > 0): ?>
+                    <a href="<?php echo esc_url(add_query_arg('mdp_download_zip', '1', admin_url('options-general.php?page=markdownpress'))); ?>"
+                        class="button">
+                        <span class="dashicons dashicons-archive"></span>
+                        Download ZIP
                     </a>
                 <?php endif; ?>
             </div>
@@ -281,11 +292,14 @@ class MDP_Admin
                                             (100% Accurate)</option>
                                     </select>
                                     <p class="description">
-                                        <strong>Filters</strong> — uses <code>apply_filters('the_content')</code>, works with
-                                        Gutenberg, Elementor, WPBakery, ACF, etc.<br>
-                                        <strong>HTTP</strong> — fetches each page as HTML (like a browser), extracts main
-                                        content. Slower but works with any setup.<br>
-                                        <strong>Both</strong> — tries filters first, falls back to HTTP if content is empty.
+                                        <strong>Combined (Smart Fallback)</strong> — Recommended. Uses WordPress filters first
+                                        for speed, then automatically falls back to HTTP Fetch for page builders like Bricks or
+                                        Elementor if the content appears empty.<br>
+                                        <strong>WordPress Filters (Fast)</strong> — Standard method using
+                                        <code>apply_filters('the_content')</code>. Works well for Gutenberg and classic
+                                        sites.<br>
+                                        <strong>HTTP Fetch (100% Accurate)</strong> — Fetches the page exactly like a browser.
+                                        Slowest method, but bypasses all builder limitations to get the true final content.
                                     </p>
                                 </td>
                             </tr>
@@ -390,7 +404,7 @@ class MDP_Admin
                 </div>
 
                 <p class="mdp-cache-dir-info">
-                    <strong>Cache directory:</strong> <code><?php echo esc_html(MDP_CACHE_DIR); ?></code>
+                    <strong>Markdown files directory:</strong> <code><?php echo esc_html(MDP_CACHE_DIR); ?></code>
                 </p>
 
                 <?php
@@ -503,7 +517,56 @@ class MDP_Admin
     /* ───────────────────────────── Helpers ───────────────────────────── */
 
     /**
-     * Get total cache directory size in bytes.
+     * Handle the ZIP download request.
+     */
+    public function handle_zip_download()
+    {
+        if (!isset($_GET['mdp_download_zip']) || !current_user_can('manage_options')) {
+            return;
+        }
+
+        if (!class_exists('ZipArchive')) {
+            wp_die('ZipArchive PHP extension is not enabled on your server.');
+        }
+
+        $zip_file = tempnam(sys_get_temp_dir(), 'mdp');
+        $zip = new ZipArchive();
+
+        if ($zip->open($zip_file, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            wp_die('Could not create temporary ZIP file.');
+        }
+
+        $root_path = MDP_CACHE_DIR;
+        $files = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($root_path, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::LEAVES_ONLY
+        );
+
+        foreach ($files as $name => $file) {
+            if (!$file->isDir()) {
+                $file_path = $file->getRealPath();
+                $relative_path = substr($file_path, strlen($root_path));
+                $zip->addFile($file_path, $relative_path);
+            }
+        }
+
+        $zip->close();
+
+        // Serve the file.
+        $filename = 'markdown-cache-' . date('Y-m-d') . '.zip';
+        header('Content-Type: application/zip');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Length: ' . filesize($zip_file));
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        readfile($zip_file);
+        unlink($zip_file);
+        exit;
+    }
+
+    /**
+     * Get total markdown files directory size in bytes.
      */
     private function get_cache_size()
     {

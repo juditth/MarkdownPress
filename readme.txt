@@ -3,7 +3,7 @@ Contributors: Jitka Klingenbergová
 Tags: markdown, ai, llm, cache, content
 Requires at least: 5.5
 Tested up to: 6.7
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 Requires PHP: 7.4
 License: GPLv2 or later
 
@@ -80,6 +80,18 @@ It's an emerging standard (llmstxt.org) for describing your website to AI tools 
 No. Generation happens in the background via WP Cron. Serving cached markdown files is faster than normal page rendering because it reads a static file.
 
 == Changelog ==
+
+= 1.2.0 =
+* Added Error Logging (stored in `_errors.log` within the cache directory).
+* Added "Download ZIP" feature to easily export all markdown files.
+* Added on-the-fly generation: missed cache items are now generated immediately when requested.
+* Improved path matching and .htaccess rules for faster serving.
+* Renamed cache directory to `markdownpress` for brand consistency.
+
+= 1.1.1 =
+* Polished admin UI descriptions and rendering method labels.
+* Added "Settings" link to the plugins page for easier access.
+* Fixed redundant options in rendering method dropdown.
 
 = 1.1.0 =
 * Renamed plugin to MarkdownPress.

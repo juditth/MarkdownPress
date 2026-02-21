@@ -58,7 +58,7 @@ class MDP_Htaccess
      */
     private static function generate_rules()
     {
-        // Calculate the relative path from ABSPATH to the cache directory.
+        // Calculate the relative path from ABSPATH to the markdown files directory.
         $cache_rel = str_replace(ABSPATH, '', MDP_CACHE_DIR);
         $cache_rel = trim($cache_rel, '/');
 

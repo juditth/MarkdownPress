@@ -82,17 +82,31 @@ class MDP_Server
             $file = MDP_CACHE_DIR . $path . '.md';
         }
 
-        // Try serving special files like _sitemap.md or _all.md.
         if (!file_exists($file)) {
-            if ($path === '_sitemap' || $path === 'wp-markdown/_sitemap') {
+            // Try serving special files like _sitemap.md or _all.md.
+            if ($path === '_sitemap' || strpos($path, '/_sitemap') !== false) {
                 $file = MDP_CACHE_DIR . '_sitemap.md';
-            } elseif ($path === '_all' || $path === 'wp-markdown/_all') {
+            } elseif ($path === '_all' || strpos($path, '/_all') !== false) {
                 $file = MDP_CACHE_DIR . '_all.md';
             }
         }
 
         if (!file_exists($file)) {
-            // No cached version available — let WP handle it normally.
+            // On-the-fly generation: Try to resolve URL to a post.
+            $full_url = (is_ssl() ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+            $post_id = url_to_postid($full_url);
+
+            if ($post_id) {
+                $converter = new MDP_Converter();
+                if ($converter->convert_post($post_id)) {
+                    // Re-check file after generation.
+                    if (file_exists($file)) {
+                        self::send_markdown_response($file);
+                    }
+                }
+            }
+
+            // No cached version available and couldn't generate — let WP handle it normally.
             return;
         }
 
