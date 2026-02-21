@@ -1,32 +1,91 @@
 # MarkdownPress
 
-Creates a markdown mirror of your WordPress site. Serves content via `Accept: text/markdown` header, generates `llms.txt` for AI crawlers.
+Generates a Markdown mirror of your entire WordPress site for AI/LLM consumption. Serves content via `Accept: text/markdown` header and generates `llms.txt`.
 
-## Features
+## Description
 
-- **Converts** all published posts, pages, and custom post types to clean Markdown.
-- **Supports** taxonomy archives, author pages, and the homepage.
-- **Works with any page builder** (Gutenberg, Elementor, Bricks, WPBakery, Divi, etc.).
-- **Generates `llms.txt` and `llms-full.txt`** — the "robots.txt for AI".
-- **Serves markdown instantly** via `Accept: text/markdown` HTTP header or `?format=markdown` query parameter.
-- **Smart batch processing** to prevent server overload.
-- **Event-driven updates**: regenerates markdown when posts are saved.
-- **YAML frontmatter** with title, URL, dates, categories, tags, featured image.
-- **On-the-fly generation**: missed cache items are now generated immediately when requested.
+MarkdownPress automatically generates Markdown versions of all your WordPress content and serves them to AI crawlers and LLM tools.
+
+### Features
+
+- **Converts all content**: Published posts, pages, and custom post types to clean Markdown.
+- **Full support**: Taxonomy archives, author pages, and the homepage.
+- **Page Builder compatible**: Works with Gutenberg, Elementor, Bricks, WPBakery, Divi, etc.
+- **AI Standards**: Generates `llms.txt` and `llms-full.txt` (the "robots.txt for AI").
+- **Instant serving**: Via `Accept: text/markdown` HTTP header or `?format=markdown` URL parameter.
+- **Performance**: Smart batch processing via WP Cron to prevent server overload.
+- **Dynamic**: Regenerates markdown automatically when posts are saved.
+- **Admin Dashboard**: Real-time stats, progress bar, and manual triggers.
+- **Rich Meta**: YAML frontmatter including featured images, categories, and tags.
+- **Security**: URL exclusion list for sensitive pages.
+- **Advanced Output**: Generates `_all.md` (entire site in one file) and `_sitemap.md`.
+
+## How it works
+
+1. **Queueing**: The plugin queues all content for processing (manually or on schedule).
+2. **Processing**: Items are processed in small batches to preserve server resources.
+3. **Conversion**: Pages are rendered through WP filters (to resolve shortcodes) and converted to Markdown.
+4. **Caching**: Files are stored in `wp-content/markdownpress/`.
+5. **Direct Serving**: When requested via headers, the cached file is served instantly by the server.
+
+## File structure
+
+```text
+wp-content/markdownpress/
+├── index.md                  # homepage
+├── about/
+│   └── index.md
+├── blog/
+│   ├── my-post/
+│   │   └── index.md
+├── _sitemap.md               # list of all pages
+├── _all.md                   # complete site content
+├── llms.txt                  # compact site overview
+└── llms-full.txt             # full content for LLMs
+```
 
 ## Installation
 
 1. Upload the `markdownpress` folder to `/wp-content/plugins/`
-2. Activate the plugin through the 'Plugins' menu in WordPress
-3. Go to **Settings → MarkdownPress** to configure
-4. Click "Generate Now" or wait for the next scheduled cron run
+2. Activate the plugin through the **Plugins** menu in WordPress.
+3. Go to **Settings → MarkdownPress** to configure.
+4. Click **Generate Now** to build your first cache.
 
-## How to use for AI
+## FAQ
 
-To let an AI agent read your site, point it to `your-domain.com/llms.txt`.
-To fetch any specific page as Markdown, use the following header:
-`Accept: text/markdown`
+#### Does it work with Elementor / Bricks / etc.?
+Yes. It uses `apply_filters('the_content')`. If you see missing content, switch the rendering method to "HTTP fetch" in settings.
 
----
+#### How do I access markdown content?
+- Add `?format=markdown` to any URL.
+- Send the `Accept: text/markdown` HTTP header.
 
-*Note: For official WordPress.org repository details, see `readme.txt`.*
+#### What is llms.txt?
+An emerging standard for describing your website to AI tools (see [llmstxt.org](https://llmstxt.org)).
+
+## Changelog
+
+### 1.2.3
+- Forced absolute URLs for all images in Markdown output for better AI compatibility.
+
+### 1.2.2
+- Added "Stop Generation" button to halt active processing.
+- Fixed button icon alignment in the admin interface.
+
+### 1.2.1
+- Added help text explaining how to serve Markdown via HTTP `Accept` header.
+
+### 1.2.0
+- Added Error Logging (`_errors.log`).
+- Added "Download ZIP" feature.
+- Added on-the-fly generation for missed cache items.
+- Improved path matching and .htaccess rules.
+- Renamed cache directory to `markdownpress`.
+
+### 1.1.0
+- Added support for Bricks, Elementor, and other page builders.
+- Improved content rendering using combined PHP and HTTP fetch methods.
+- Changed default content source to XML Sitemap.
+
+### 1.0.0
+- Initial release
