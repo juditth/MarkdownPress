@@ -82,7 +82,7 @@ function wpmc_activate()
 
     // Set default options.
     if (false === get_option('wpmc_options')) {
-        update_option('wpmc_options', array());
+        update_option('wpmc_options', array(), false);
     }
 }
 register_activation_hook(__FILE__, 'wpmc_activate');

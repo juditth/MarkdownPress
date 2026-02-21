@@ -13,8 +13,18 @@ if (!defined('ABSPATH')) {
 class WPMC_Generator
 {
 
-    const QUEUE_OPTION = 'wpmc_generation_queue';
-    const STATUS_OPTION = 'wpmc_generation_status';
+    /**
+     * File paths for queue and status (no database!).
+     */
+    public static function get_queue_file()
+    {
+        return WPMC_CACHE_DIR . '_queue.json';
+    }
+
+    public static function get_status_file()
+    {
+        return WPMC_CACHE_DIR . '_status.json';
+    }
 
     /**
      * Queue all content items for markdown generation.
@@ -31,15 +41,20 @@ class WPMC_Generator
             $queue = $this->get_all_content_items();
         }
 
-        // Store queue.
-        update_option(self::QUEUE_OPTION, $queue, false);
-        update_option(self::STATUS_OPTION, array(
+        // Ensure cache directory exists.
+        if (!file_exists(WPMC_CACHE_DIR)) {
+            wp_mkdir_p(WPMC_CACHE_DIR);
+        }
+
+        // Store queue to JSON file (no database).
+        file_put_contents(self::get_queue_file(), wp_json_encode($queue));
+        file_put_contents(self::get_status_file(), wp_json_encode(array(
             'total' => count($queue),
             'processed' => 0,
             'started' => current_time('mysql'),
             'finished' => null,
             'errors' => 0,
-        ), false);
+        )));
 
         return count($queue);
     }
@@ -53,12 +68,16 @@ class WPMC_Generator
     {
         $options = wpmc_get_options();
         $batch_size = max(1, intval($options['batch_size']));
-        $queue = get_option(self::QUEUE_OPTION, array());
-        $status = get_option(self::STATUS_OPTION, array());
+        $queue = self::read_json(self::get_queue_file(), array());
+        $status = self::read_json(self::get_status_file(), array());
 
         if (empty($queue)) {
             $status['finished'] = current_time('mysql');
-            update_option(self::STATUS_OPTION, $status);
+            file_put_contents(self::get_status_file(), wp_json_encode($status));
+            // Remove empty queue file.
+            if (file_exists(self::get_queue_file())) {
+                @unlink(self::get_queue_file());
+            }
             return 0;
         }
 
@@ -92,9 +111,9 @@ class WPMC_Generator
             }
         }
 
-        // Update queue.
-        update_option(self::QUEUE_OPTION, $queue, false);
-        update_option(self::STATUS_OPTION, $status);
+        // Update queue and status files.
+        file_put_contents(self::get_queue_file(), wp_json_encode($queue));
+        file_put_contents(self::get_status_file(), wp_json_encode($status));
 
         return count($queue);
     }
@@ -397,17 +416,56 @@ class WPMC_Generator
     }
 
     /**
-     * Get current generation status.
+     * Get current generation status from JSON file.
      */
     public static function get_status()
     {
-        return get_option(self::STATUS_OPTION, array(
+        return self::read_json(self::get_status_file(), array(
             'total' => 0,
             'processed' => 0,
             'started' => null,
             'finished' => null,
             'errors' => 0,
         ));
+    }
+
+    /**
+     * Check if generation queue has items.
+     */
+    public static function has_queue()
+    {
+        $file = self::get_queue_file();
+        if (!file_exists($file)) {
+            return false;
+        }
+        $queue = self::read_json($file, array());
+        return !empty($queue);
+    }
+
+    /**
+     * Get remaining queue count.
+     */
+    public static function get_queue_count()
+    {
+        $queue = self::read_json(self::get_queue_file(), array());
+        return count($queue);
+    }
+
+    /**
+     * Read a JSON file and decode it.
+     *
+     * @param  string $file    File path.
+     * @param  mixed  $default Default value if file doesn't exist.
+     * @return mixed
+     */
+    private static function read_json($file, $default = array())
+    {
+        if (!file_exists($file)) {
+            return $default;
+        }
+        $content = file_get_contents($file);
+        $data = json_decode($content, true);
+        return ($data !== null) ? $data : $default;
     }
 
     /**

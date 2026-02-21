@@ -105,7 +105,7 @@ class WPMC_Admin
         $cache_size = $this->get_cache_size();
         $cache_files = $this->count_cache_files();
         $next_cron = wp_next_scheduled('wpmc_cron_generate');
-        $is_processing = !empty(get_option(WPMC_Generator::QUEUE_OPTION, array()));
+        $is_processing = WPMC_Generator::has_queue();
         ?>
         <div class="wrap wpmc-wrap">
             <h1>
@@ -260,8 +260,8 @@ class WPMC_Admin
                                 <th>Rendering method</th>
                                 <td>
                                     <select name="wpmc_options[content_method]">
-                                        <option value="filter" <?php selected($options['content_method'], 'filter'); ?>
-                                            >WordPress filters (fast, works with most builders)</option>
+                                        <option value="filter" <?php selected($options['content_method'], 'filter'); ?>>
+                                            WordPress filters (fast, works with most builders)</option>
                                         <option value="http" <?php selected($options['content_method'], 'http'); ?>>HTTP fetch
                                             (slow, but 100% accurate)</option>
                                         <option value="both" <?php selected($options['content_method'], 'both'); ?>>Try
@@ -368,7 +368,8 @@ class WPMC_Admin
                                         excluded.<br>
                                         Built-in exclusions: <code>/wp-admin</code>, <code>/wp-login</code>,
                                         <code>/wp-json</code>, <code>/feed</code>, <code>/cart</code>, <code>/checkout</code>,
-                                        <code>/my-account</code></p>
+                                        <code>/my-account</code>
+                                    </p>
                                 </td>
                             </tr>
                         </table>
@@ -436,9 +437,7 @@ class WPMC_Admin
 
         WPMC_Generator::clear_cache();
 
-        // Also clear queue and status.
-        delete_option(WPMC_Generator::QUEUE_OPTION);
-        delete_option(WPMC_Generator::STATUS_OPTION);
+        // Queue and status are cleaned as part of clear_cache (they're JSON files in the cache dir).
 
         wp_send_json_success(array('message' => 'Cache cleared.'));
     }
@@ -450,11 +449,11 @@ class WPMC_Admin
     {
         check_ajax_referer('wpmc_admin_nonce', 'nonce');
         $status = WPMC_Generator::get_status();
-        $queue = get_option(WPMC_Generator::QUEUE_OPTION, array());
+        $remaining = WPMC_Generator::get_queue_count();
 
         wp_send_json_success(array(
             'status' => $status,
-            'remaining' => count($queue),
+            'remaining' => $remaining,
             'files' => $this->count_cache_files(),
             'size' => size_format($this->get_cache_size()),
         ));
