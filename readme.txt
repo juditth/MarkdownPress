@@ -1,4 +1,4 @@
-=== WP Markdown Cache ===
+=== MarkdownPress ===
 Contributors: Jitka Klingenbergová
 Tags: markdown, ai, llm, cache, content
 Requires at least: 5.5
@@ -7,11 +7,11 @@ Stable tag: 1.0.0
 Requires PHP: 7.4
 License: GPLv2 or later
 
-Generates a Markdown cache of your entire WordPress site for AI/LLM consumption. Serves content via Accept: text/markdown header. Generates llms.txt.
+Generates a MarkdownPress of your entire WordPress site for AI/LLM consumption. Serves content via Accept: text/markdown header. Generates llms.txt.
 
 == Description ==
 
-WP Markdown Cache automatically generates Markdown versions of all your WordPress content and serves them to AI crawlers and LLM tools.
+MarkdownPress automatically generates Markdown versions of all your WordPress content and serves them to AI crawlers and LLM tools.
 
 **Features:**
 
@@ -54,9 +54,9 @@ WP Markdown Cache automatically generates Markdown versions of all your WordPres
 
 == Installation ==
 
-1. Upload the `wp-markdown-cache` folder to `/wp-content/plugins/`
+1. Upload the `markdownpress` folder to `/wp-content/plugins/`
 2. Activate the plugin through the 'Plugins' menu in WordPress
-3. Go to Settings → Markdown Cache to configure
+3. Go to Settings → MarkdownPress to configure
 4. Click "Generate Now" or wait for the next scheduled cron run
 
 == Frequently Asked Questions ==

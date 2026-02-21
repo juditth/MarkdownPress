@@ -1,5 +1,5 @@
 /**
- * WP Markdown Cache — Admin JavaScript
+ * MarkdownPress — Admin JavaScript
  * Handles generate/clear AJAX actions and status polling.
  */
 (function ($) {
@@ -8,16 +8,16 @@
     var polling = null;
 
     // Generate Now button.
-    $('#wpmc-generate-now').on('click', function (e) {
+    $('#mdp-generate-now').on('click', function (e) {
         e.preventDefault();
         var $btn = $(this);
 
         if ($btn.prop('disabled')) return;
         $btn.prop('disabled', true).text('Starting...');
 
-        $.post(wpmcAdmin.ajaxUrl, {
-            action: 'wpmc_generate_now',
-            nonce: wpmcAdmin.nonce,
+        $.post(mdpAdmin.ajaxUrl, {
+            action: 'mdp_generate_now',
+            nonce: mdpAdmin.nonce,
         }, function (response) {
             if (response.success) {
                 var data = response.data;
@@ -37,7 +37,7 @@
     });
 
     // Clear Cache button.
-    $('#wpmc-clear-cache').on('click', function (e) {
+    $('#mdp-clear-cache').on('click', function (e) {
         e.preventDefault();
 
         if (!confirm('Delete all cached markdown files? This cannot be undone.')) {
@@ -47,9 +47,9 @@
         var $btn = $(this);
         $btn.prop('disabled', true);
 
-        $.post(wpmcAdmin.ajaxUrl, {
-            action: 'wpmc_clear_cache',
-            nonce: wpmcAdmin.nonce,
+        $.post(mdpAdmin.ajaxUrl, {
+            action: 'mdp_clear_cache',
+            nonce: mdpAdmin.nonce,
         }, function (response) {
             if (response.success) {
                 location.reload();
@@ -65,9 +65,9 @@
         if (polling) return;
 
         polling = setInterval(function () {
-            $.post(wpmcAdmin.ajaxUrl, {
-                action: 'wpmc_get_status',
-                nonce: wpmcAdmin.nonce,
+            $.post(mdpAdmin.ajaxUrl, {
+                action: 'mdp_get_status',
+                nonce: mdpAdmin.nonce,
             }, function (response) {
                 if (!response.success) return;
 
@@ -80,11 +80,11 @@
                 // If queue is empty, generation is done.
                 if (data.remaining === 0) {
                     stopPolling();
-                    $('#wpmc-generate-now')
+                    $('#mdp-generate-now')
                         .prop('disabled', false)
                         .html('<span class="dashicons dashicons-controls-play"></span> Generate Now');
-                    $('#wpmc-status-text').text('Done!');
-                    $('#wpmc-status-detail').text(status.processed + ' pages processed' + (status.errors > 0 ? ' (' + status.errors + ' errors)' : ''));
+                    $('#mdp-status-text').text('Done!');
+                    $('#mdp-status-detail').text(status.processed + ' pages processed' + (status.errors > 0 ? ' (' + status.errors + ' errors)' : ''));
 
                     // Reload after a moment to update all stats.
                     setTimeout(function () {
@@ -103,18 +103,18 @@
     }
 
     function showProgress(status) {
-        var $progress = $('#wpmc-progress');
+        var $progress = $('#mdp-progress');
         $progress.show();
 
         var pct = status.total > 0 ? Math.round(status.processed / status.total * 100) : 0;
-        $progress.find('.wpmc-progress-fill').css('width', pct + '%');
-        $('#wpmc-progress-text').text(status.processed + ' / ' + status.total + ' pages (' + pct + '%)');
-        $('#wpmc-status-text').text('Processing...');
-        $('#wpmc-status-detail').text(status.processed + ' / ' + status.total);
+        $progress.find('.mdp-progress-fill').css('width', pct + '%');
+        $('#mdp-progress-text').text(status.processed + ' / ' + status.total + ' pages (' + pct + '%)');
+        $('#mdp-status-text').text('Processing...');
+        $('#mdp-status-detail').text(status.processed + ' / ' + status.total);
     }
 
     // If already processing on page load, start polling.
-    if ($('#wpmc-status-text').text().trim() === 'Processing...') {
+    if ($('#mdp-status-text').text().trim() === 'Processing...') {
         startPolling();
     }
 

@@ -3,14 +3,14 @@
  * Batch generator — queues all content items and processes them in batches
  * to avoid server overload. Also generates summary files (_all.md, _sitemap.md).
  *
- * @package WP_Markdown_Cache
+ * @package MarkdownPress
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-class WPMC_Generator
+class MDP_Generator
 {
 
     /**
@@ -18,12 +18,12 @@ class WPMC_Generator
      */
     public static function get_queue_file()
     {
-        return WPMC_CACHE_DIR . '_queue.json';
+        return MDP_CACHE_DIR . '_queue.json';
     }
 
     public static function get_status_file()
     {
-        return WPMC_CACHE_DIR . '_status.json';
+        return MDP_CACHE_DIR . '_status.json';
     }
 
     /**
@@ -32,7 +32,7 @@ class WPMC_Generator
      */
     public function queue_all()
     {
-        $options = wpmc_get_options();
+        $options = mdp_get_options();
         $queue = array();
 
         if ($options['source'] === 'sitemap') {
@@ -42,8 +42,8 @@ class WPMC_Generator
         }
 
         // Ensure cache directory exists.
-        if (!file_exists(WPMC_CACHE_DIR)) {
-            wp_mkdir_p(WPMC_CACHE_DIR);
+        if (!file_exists(MDP_CACHE_DIR)) {
+            wp_mkdir_p(MDP_CACHE_DIR);
         }
 
         // Store queue to JSON file (no database).
@@ -66,7 +66,7 @@ class WPMC_Generator
      */
     public function process_batch()
     {
-        $options = wpmc_get_options();
+        $options = mdp_get_options();
         $batch_size = max(1, intval($options['batch_size']));
         $queue = self::read_json(self::get_queue_file(), array());
         $status = self::read_json(self::get_status_file(), array());
@@ -81,7 +81,7 @@ class WPMC_Generator
             return 0;
         }
 
-        $converter = new WPMC_Converter();
+        $converter = new MDP_Converter();
         $batch = array_splice($queue, 0, $batch_size);
 
         foreach ($batch as $item) {
@@ -125,8 +125,8 @@ class WPMC_Generator
      */
     private function get_all_content_items()
     {
-        $options = wpmc_get_options();
-        $converter = new WPMC_Converter();
+        $options = mdp_get_options();
+        $converter = new MDP_Converter();
         $items = array();
 
         // 1. Homepage.
@@ -190,7 +190,7 @@ class WPMC_Generator
 
         $response = wp_remote_get($sitemap_url, array(
             'timeout' => 15,
-            'user-agent' => 'WP-Markdown-Cache/1.0',
+            'user-agent' => 'markdownpress/1.0',
         ));
 
         if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
@@ -198,7 +198,7 @@ class WPMC_Generator
             $sitemap_url = home_url('/sitemap_index.xml');
             $response = wp_remote_get($sitemap_url, array(
                 'timeout' => 15,
-                'user-agent' => 'WP-Markdown-Cache/1.0',
+                'user-agent' => 'markdownpress/1.0',
             ));
         }
 
@@ -264,7 +264,7 @@ class WPMC_Generator
      */
     private function convert_sitemap_url($url)
     {
-        $converter = new WPMC_Converter();
+        $converter = new MDP_Converter();
 
         // First, try to find a matching post/term/author.
         $post_id = url_to_postid($url);
@@ -280,7 +280,7 @@ class WPMC_Generator
         // For other URLs (archives, etc.), use HTTP fetch.
         $response = wp_remote_get($url, array(
             'timeout' => 30,
-            'user-agent' => 'WP-Markdown-Cache/1.0',
+            'user-agent' => 'markdownpress/1.0',
             'headers' => array('Accept' => 'text/html'),
         ));
 
@@ -301,9 +301,9 @@ class WPMC_Generator
             $html = $m[1];
         }
 
-        $markdown = WPMC_Html_To_Markdown::convert($html);
+        $markdown = MDP_Html_To_Markdown::convert($html);
 
-        $options = wpmc_get_options();
+        $options = mdp_get_options();
         $fm = '';
         if ($options['frontmatter']) {
             // Extract title from HTML.
@@ -332,24 +332,24 @@ class WPMC_Generator
      */
     public function generate_summary_files()
     {
-        $options = wpmc_get_options();
+        $options = mdp_get_options();
 
         // _sitemap.md — list of all pages with titles and URLs.
         $sitemap_md = "# Sitemap — " . get_bloginfo('name') . "\n\n";
         $sitemap_md .= "Generated: " . current_time('Y-m-d H:i:s') . "\n\n";
 
-        $files = $this->scan_cache_files(WPMC_CACHE_DIR);
+        $files = $this->scan_cache_files(MDP_CACHE_DIR);
         sort($files);
 
         foreach ($files as $file) {
             $content = file_get_contents($file);
-            $rel_path = str_replace(WPMC_CACHE_DIR, '', $file);
+            $rel_path = str_replace(MDP_CACHE_DIR, '', $file);
             $title = $this->extract_title_from_md($content);
             $url = $this->extract_url_from_md($content);
             $sitemap_md .= "- [{$title}]({$url}) — `{$rel_path}`\n";
         }
 
-        file_put_contents(WPMC_CACHE_DIR . '_sitemap.md', $sitemap_md);
+        file_put_contents(MDP_CACHE_DIR . '_sitemap.md', $sitemap_md);
 
         // _all.md — full content of all pages concatenated.
         if ($options['generate_all_md']) {
@@ -360,12 +360,12 @@ class WPMC_Generator
 
             foreach ($files as $file) {
                 $content = file_get_contents($file);
-                $rel_path = str_replace(WPMC_CACHE_DIR, '', $file);
+                $rel_path = str_replace(MDP_CACHE_DIR, '', $file);
                 $all_md .= "<!-- Source: {$rel_path} -->\n\n";
                 $all_md .= $content . "\n\n---\n\n";
             }
 
-            file_put_contents(WPMC_CACHE_DIR . '_all.md', $all_md);
+            file_put_contents(MDP_CACHE_DIR . '_all.md', $all_md);
         }
     }
 
@@ -473,10 +473,10 @@ class WPMC_Generator
      */
     public static function clear_cache()
     {
-        if (!file_exists(WPMC_CACHE_DIR)) {
+        if (!file_exists(MDP_CACHE_DIR)) {
             return;
         }
-        self::delete_directory_contents(WPMC_CACHE_DIR);
+        self::delete_directory_contents(MDP_CACHE_DIR);
     }
 
     /**

@@ -5,14 +5,14 @@
  * llms.txt follows the emerging standard for LLM-readable site descriptions.
  * @see https://llmstxt.org/
  *
- * @package WP_Markdown_Cache
+ * @package MarkdownPress
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-class WPMC_Llms_Txt
+class MDP_Llms_Txt
 {
 
     /**
@@ -115,7 +115,7 @@ class WPMC_Llms_Txt
         $txt .= "1. Adding `?format=markdown` to any URL\n";
         $txt .= "2. Sending `Accept: text/markdown` in the HTTP request headers\n";
 
-        file_put_contents(WPMC_CACHE_DIR . 'llms.txt', $txt);
+        file_put_contents(MDP_CACHE_DIR . 'llms.txt', $txt);
     }
 
     /**
@@ -123,10 +123,10 @@ class WPMC_Llms_Txt
      */
     private static function generate_llms_full_txt()
     {
-        $all_md_file = WPMC_CACHE_DIR . '_all.md';
+        $all_md_file = MDP_CACHE_DIR . '_all.md';
         if (file_exists($all_md_file)) {
             // Just copy _all.md as llms-full.txt.
-            copy($all_md_file, WPMC_CACHE_DIR . 'llms-full.txt');
+            copy($all_md_file, MDP_CACHE_DIR . 'llms-full.txt');
         } else {
             // Generate a simpler version.
             $txt = "# " . get_bloginfo('name') . " — Full Content\n\n";
@@ -146,10 +146,10 @@ class WPMC_Llms_Txt
                 $txt .= "URL: " . get_permalink($post->ID) . "\n";
                 $txt .= "Type: {$post->post_type}\n\n";
                 $content = apply_filters('the_content', $post->post_content);
-                $txt .= WPMC_Html_To_Markdown::convert($content) . "\n\n---\n\n";
+                $txt .= MDP_Html_To_Markdown::convert($content) . "\n\n---\n\n";
             }
 
-            file_put_contents(WPMC_CACHE_DIR . 'llms-full.txt', $txt);
+            file_put_contents(MDP_CACHE_DIR . 'llms-full.txt', $txt);
         }
     }
 }

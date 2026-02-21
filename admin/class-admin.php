@@ -1,16 +1,16 @@
 <?php
 /**
- * Admin settings page for WP Markdown Cache.
+ * Admin settings page for MarkdownPress.
  * Adds a menu page under Settings, handles options, manual triggers, and AJAX status check.
  *
- * @package WP_Markdown_Cache
+ * @package MarkdownPress
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-class WPMC_Admin
+class MDP_Admin
 {
 
     public function __construct()
@@ -20,9 +20,9 @@ class WPMC_Admin
         add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
 
         // AJAX handlers.
-        add_action('wp_ajax_wpmc_generate_now', array($this, 'ajax_generate_now'));
-        add_action('wp_ajax_wpmc_clear_cache', array($this, 'ajax_clear_cache'));
-        add_action('wp_ajax_wpmc_get_status', array($this, 'ajax_get_status'));
+        add_action('wp_ajax_mdp_generate_now', array($this, 'ajax_generate_now'));
+        add_action('wp_ajax_mdp_clear_cache', array($this, 'ajax_clear_cache'));
+        add_action('wp_ajax_mdp_get_status', array($this, 'ajax_get_status'));
     }
 
     /**
@@ -31,10 +31,10 @@ class WPMC_Admin
     public function add_menu()
     {
         add_options_page(
-            'WP Markdown Cache',
-            'Markdown Cache',
+            'MarkdownPress',
+            'MarkdownPress',
             'manage_options',
-            'wp-markdown-cache',
+            'markdownpress',
             array($this, 'render_page')
         );
     }
@@ -44,14 +44,14 @@ class WPMC_Admin
      */
     public function enqueue_assets($hook)
     {
-        if ($hook !== 'settings_page_wp-markdown-cache') {
+        if ($hook !== 'settings_page_markdownpress') {
             return;
         }
-        wp_enqueue_style('wpmc-admin', WPMC_PLUGIN_URL . 'admin/assets/admin.css', array(), WPMC_VERSION);
-        wp_enqueue_script('wpmc-admin', WPMC_PLUGIN_URL . 'admin/assets/admin.js', array('jquery'), WPMC_VERSION, true);
-        wp_localize_script('wpmc-admin', 'wpmcAdmin', array(
+        wp_enqueue_style('mdp-admin', MDP_PLUGIN_URL . 'admin/assets/admin.css', array(), MDP_VERSION);
+        wp_enqueue_script('mdp-admin', MDP_PLUGIN_URL . 'admin/assets/admin.js', array('jquery'), MDP_VERSION, true);
+        wp_localize_script('mdp-admin', 'mdpAdmin', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('wpmc_admin_nonce'),
+            'nonce' => wp_create_nonce('mdp_admin_nonce'),
         ));
     }
 
@@ -60,7 +60,7 @@ class WPMC_Admin
      */
     public function register_settings()
     {
-        register_setting('wpmc_options_group', 'wpmc_options', array(
+        register_setting('mdp_options_group', 'mdp_options', array(
             'sanitize_callback' => array($this, 'sanitize_options'),
         ));
     }
@@ -89,7 +89,7 @@ class WPMC_Admin
         $sanitized['content_method'] = in_array($input['content_method'] ?? '', array('filter', 'http', 'both')) ? $input['content_method'] : 'filter';
 
         // Reschedule cron if time changed.
-        wpmc_schedule_cron();
+        mdp_schedule_cron();
 
         return $sanitized;
     }
@@ -99,58 +99,58 @@ class WPMC_Admin
      */
     public function render_page()
     {
-        $options = wpmc_get_options();
-        $status = WPMC_Generator::get_status();
+        $options = mdp_get_options();
+        $status = MDP_Generator::get_status();
         $all_post_types = get_post_types(array('public' => true), 'objects');
         $cache_size = $this->get_cache_size();
         $cache_files = $this->count_cache_files();
-        $next_cron = wp_next_scheduled('wpmc_cron_generate');
-        $is_processing = WPMC_Generator::has_queue();
+        $next_cron = wp_next_scheduled('mdp_cron_generate');
+        $is_processing = MDP_Generator::has_queue();
         ?>
-        <div class="wrap wpmc-wrap">
+        <div class="wrap mdp-wrap">
             <h1>
                 <span class="dashicons dashicons-media-text" style="font-size: 30px; margin-right: 8px;"></span>
-                WP Markdown Cache
+                MarkdownPress
             </h1>
 
             <!-- Status cards -->
-            <div class="wpmc-status-cards">
-                <div class="wpmc-card">
-                    <div class="wpmc-card-icon dashicons dashicons-media-document"></div>
-                    <div class="wpmc-card-content">
-                        <div class="wpmc-card-number">
+            <div class="mdp-status-cards">
+                <div class="mdp-card">
+                    <div class="mdp-card-icon dashicons dashicons-media-document"></div>
+                    <div class="mdp-card-content">
+                        <div class="mdp-card-number">
                             <?php echo number_format($cache_files); ?>
                         </div>
-                        <div class="wpmc-card-label">Cached files</div>
+                        <div class="mdp-card-label">Cached files</div>
                     </div>
                 </div>
-                <div class="wpmc-card">
-                    <div class="wpmc-card-icon dashicons dashicons-database"></div>
-                    <div class="wpmc-card-content">
-                        <div class="wpmc-card-number">
+                <div class="mdp-card">
+                    <div class="mdp-card-icon dashicons dashicons-database"></div>
+                    <div class="mdp-card-content">
+                        <div class="mdp-card-number">
                             <?php echo size_format($cache_size); ?>
                         </div>
-                        <div class="wpmc-card-label">Cache size</div>
+                        <div class="mdp-card-label">Cache size</div>
                     </div>
                 </div>
-                <div class="wpmc-card">
-                    <div class="wpmc-card-icon dashicons dashicons-clock"></div>
-                    <div class="wpmc-card-content">
-                        <div class="wpmc-card-number">
+                <div class="mdp-card">
+                    <div class="mdp-card-icon dashicons dashicons-clock"></div>
+                    <div class="mdp-card-content">
+                        <div class="mdp-card-number">
                             <?php echo $next_cron ? wp_date('H:i', $next_cron) : '—'; ?>
                         </div>
-                        <div class="wpmc-card-label">Next cron run</div>
+                        <div class="mdp-card-label">Next cron run</div>
                     </div>
                 </div>
-                <div class="wpmc-card <?php echo $is_processing ? 'wpmc-card-active' : ''; ?>">
+                <div class="mdp-card <?php echo $is_processing ? 'mdp-card-active' : ''; ?>">
                     <div
-                        class="wpmc-card-icon dashicons dashicons-<?php echo $is_processing ? 'update wpmc-spin' : 'yes-alt'; ?>">
+                        class="mdp-card-icon dashicons dashicons-<?php echo $is_processing ? 'update mdp-spin' : 'yes-alt'; ?>">
                     </div>
-                    <div class="wpmc-card-content">
-                        <div class="wpmc-card-number" id="wpmc-status-text">
+                    <div class="mdp-card-content">
+                        <div class="mdp-card-number" id="mdp-status-text">
                             <?php echo $is_processing ? 'Processing...' : 'Idle'; ?>
                         </div>
-                        <div class="wpmc-card-label" id="wpmc-status-detail">
+                        <div class="mdp-card-label" id="mdp-status-detail">
                             <?php
                             if ($status['total'] > 0) {
                                 echo $status['processed'] . ' / ' . $status['total'];
@@ -165,17 +165,17 @@ class WPMC_Admin
             </div>
 
             <!-- Action buttons -->
-            <div class="wpmc-actions">
-                <button id="wpmc-generate-now" class="button button-primary button-hero" <?php echo $is_processing ? 'disabled' : ''; ?>>
+            <div class="mdp-actions">
+                <button id="mdp-generate-now" class="button button-primary button-hero" <?php echo $is_processing ? 'disabled' : ''; ?>>
                     <span class="dashicons dashicons-controls-play"></span>
                     Generate Now
                 </button>
-                <button id="wpmc-clear-cache" class="button button-secondary">
+                <button id="mdp-clear-cache" class="button button-secondary">
                     <span class="dashicons dashicons-trash"></span>
                     Clear Cache
                 </button>
 
-                <?php if (file_exists(WPMC_CACHE_DIR . 'llms.txt')): ?>
+                <?php if (file_exists(MDP_CACHE_DIR . 'llms.txt')): ?>
                     <a href="<?php echo home_url('/llms.txt'); ?>" target="_blank" class="button">
                         <span class="dashicons dashicons-external"></span>
                         View llms.txt
@@ -184,13 +184,13 @@ class WPMC_Admin
             </div>
 
             <!-- Progress bar -->
-            <div id="wpmc-progress" class="wpmc-progress" style="<?php echo $is_processing ? '' : 'display:none;'; ?>">
-                <div class="wpmc-progress-bar">
-                    <div class="wpmc-progress-fill"
+            <div id="mdp-progress" class="mdp-progress" style="<?php echo $is_processing ? '' : 'display:none;'; ?>">
+                <div class="mdp-progress-bar">
+                    <div class="mdp-progress-fill"
                         style="width: <?php echo $status['total'] > 0 ? round($status['processed'] / $status['total'] * 100) : 0; ?>%">
                     </div>
                 </div>
-                <div class="wpmc-progress-text" id="wpmc-progress-text">
+                <div class="mdp-progress-text" id="mdp-progress-text">
                     <?php if ($status['total'] > 0): ?>
                         <?php echo $status['processed']; ?> /
                         <?php echo $status['total']; ?> pages
@@ -199,21 +199,21 @@ class WPMC_Admin
             </div>
 
             <!-- Settings form -->
-            <form method="post" action="options.php" class="wpmc-settings-form">
-                <?php settings_fields('wpmc_options_group'); ?>
+            <form method="post" action="options.php" class="mdp-settings-form">
+                <?php settings_fields('mdp_options_group'); ?>
 
-                <div class="wpmc-settings-grid">
+                <div class="mdp-settings-grid">
 
                     <!-- General settings -->
-                    <div class="wpmc-settings-section">
+                    <div class="mdp-settings-section">
                         <h2>General</h2>
                         <table class="form-table">
                             <tr>
                                 <th>Enable</th>
                                 <td>
                                     <label>
-                                        <input type="checkbox" name="wpmc_options[enabled]" value="1" <?php checked($options['enabled']); ?> />
-                                        Enable markdown cache and serving
+                                        <input type="checkbox" name="mdp_options[enabled]" value="1" <?php checked($options['enabled']); ?> />
+                                        Enable MarkdownPress and serving
                                     </label>
                                 </td>
                             </tr>
@@ -221,11 +221,11 @@ class WPMC_Admin
                                 <th>Content source</th>
                                 <td>
                                     <label>
-                                        <input type="radio" name="wpmc_options[source]" value="all" <?php checked($options['source'], 'all'); ?> />
+                                        <input type="radio" name="mdp_options[source]" value="all" <?php checked($options['source'], 'all'); ?> />
                                         All published content (posts, pages, CPT, taxonomies, authors)
                                     </label><br>
                                     <label>
-                                        <input type="radio" name="wpmc_options[source]" value="sitemap" <?php checked($options['source'], 'sitemap'); ?> />
+                                        <input type="radio" name="mdp_options[source]" value="sitemap" <?php checked($options['source'], 'sitemap'); ?> />
                                         URLs from XML Sitemap only
                                     </label>
                                 </td>
@@ -235,7 +235,7 @@ class WPMC_Admin
                                 <td>
                                     <?php foreach ($all_post_types as $pt): ?>
                                         <label style="display: inline-block; margin-right: 16px; margin-bottom: 6px;">
-                                            <input type="checkbox" name="wpmc_options[post_types][]"
+                                            <input type="checkbox" name="mdp_options[post_types][]"
                                                 value="<?php echo esc_attr($pt->name); ?>" <?php checked(in_array($pt->name, $options['post_types'])); ?> />
                                             <?php echo esc_html($pt->label); ?> (
                                             <?php echo esc_html($pt->name); ?>)
@@ -247,11 +247,11 @@ class WPMC_Admin
                                 <th>Include</th>
                                 <td>
                                     <label>
-                                        <input type="checkbox" name="wpmc_options[include_taxonomies]" value="1" <?php checked($options['include_taxonomies']); ?> />
+                                        <input type="checkbox" name="mdp_options[include_taxonomies]" value="1" <?php checked($options['include_taxonomies']); ?> />
                                         Taxonomy archives (categories, tags, custom taxonomies)
                                     </label><br>
                                     <label>
-                                        <input type="checkbox" name="wpmc_options[include_authors]" value="1" <?php checked($options['include_authors']); ?> />
+                                        <input type="checkbox" name="mdp_options[include_authors]" value="1" <?php checked($options['include_authors']); ?> />
                                         Author archives
                                     </label>
                                 </td>
@@ -259,7 +259,7 @@ class WPMC_Admin
                             <tr>
                                 <th>Rendering method</th>
                                 <td>
-                                    <select name="wpmc_options[content_method]">
+                                    <select name="mdp_options[content_method]">
                                         <option value="filter" <?php selected($options['content_method'], 'filter'); ?>>
                                             WordPress filters (fast, works with most builders)</option>
                                         <option value="http" <?php selected($options['content_method'], 'http'); ?>>HTTP fetch
@@ -280,13 +280,13 @@ class WPMC_Admin
                     </div>
 
                     <!-- Schedule settings -->
-                    <div class="wpmc-settings-section">
+                    <div class="mdp-settings-section">
                         <h2>Schedule & Performance</h2>
                         <table class="form-table">
                             <tr>
                                 <th>Cron time</th>
                                 <td>
-                                    <input type="time" name="wpmc_options[cron_time]"
+                                    <input type="time" name="mdp_options[cron_time]"
                                         value="<?php echo esc_attr($options['cron_time']); ?>" />
                                     <p class="description">Daily full regeneration time (server timezone:
                                         <?php echo wp_timezone_string(); ?>)
@@ -296,7 +296,7 @@ class WPMC_Admin
                             <tr>
                                 <th>Batch size</th>
                                 <td>
-                                    <input type="number" name="wpmc_options[batch_size]"
+                                    <input type="number" name="mdp_options[batch_size]"
                                         value="<?php echo esc_attr($options['batch_size']); ?>" min="1" max="100" step="1"
                                         style="width: 80px;" />
                                     <p class="description">Number of pages to process per batch (1–100). Lower = gentler on
@@ -306,7 +306,7 @@ class WPMC_Admin
                             <tr>
                                 <th>Batch delay</th>
                                 <td>
-                                    <input type="number" name="wpmc_options[batch_delay]"
+                                    <input type="number" name="mdp_options[batch_delay]"
                                         value="<?php echo esc_attr($options['batch_delay']); ?>" min="1" max="30" step="1"
                                         style="width: 80px;" /> minutes
                                     <p class="description">Pause between batches (1–30 min). Also helps prevent overloading the
@@ -317,7 +317,7 @@ class WPMC_Admin
                                 <th>Auto-regenerate</th>
                                 <td>
                                     <label>
-                                        <input type="checkbox" name="wpmc_options[regenerate_on_save]" value="1" <?php checked($options['regenerate_on_save']); ?> />
+                                        <input type="checkbox" name="mdp_options[regenerate_on_save]" value="1" <?php checked($options['regenerate_on_save']); ?> />
                                         Regenerate markdown when a post is published/updated
                                     </label>
                                 </td>
@@ -326,14 +326,14 @@ class WPMC_Admin
                     </div>
 
                     <!-- Output settings -->
-                    <div class="wpmc-settings-section">
+                    <div class="mdp-settings-section">
                         <h2>Output</h2>
                         <table class="form-table">
                             <tr>
                                 <th>YAML frontmatter</th>
                                 <td>
                                     <label>
-                                        <input type="checkbox" name="wpmc_options[frontmatter]" value="1" <?php checked($options['frontmatter']); ?> />
+                                        <input type="checkbox" name="mdp_options[frontmatter]" value="1" <?php checked($options['frontmatter']); ?> />
                                         Include title, URL, dates, categories, tags in each markdown file
                                     </label>
                                 </td>
@@ -342,7 +342,7 @@ class WPMC_Admin
                                 <th>Generate _all.md</th>
                                 <td>
                                     <label>
-                                        <input type="checkbox" name="wpmc_options[generate_all_md]" value="1" <?php checked($options['generate_all_md']); ?> />
+                                        <input type="checkbox" name="mdp_options[generate_all_md]" value="1" <?php checked($options['generate_all_md']); ?> />
                                         Concatenate all pages into a single file (for LLM context windows)
                                     </label>
                                     <p class="description">Warning: can be very large on big sites.</p>
@@ -352,7 +352,7 @@ class WPMC_Admin
                                 <th>Generate llms.txt</th>
                                 <td>
                                     <label>
-                                        <input type="checkbox" name="wpmc_options[generate_llms_txt]" value="1" <?php checked($options['generate_llms_txt']); ?> />
+                                        <input type="checkbox" name="mdp_options[generate_llms_txt]" value="1" <?php checked($options['generate_llms_txt']); ?> />
                                         Generate <code>/llms.txt</code> and <code>/llms-full.txt</code>
                                     </label>
                                     <p class="description">Like robots.txt but for LLMs. Describes your site structure for AI
@@ -362,7 +362,7 @@ class WPMC_Admin
                             <tr>
                                 <th>Exclude URLs</th>
                                 <td>
-                                    <textarea name="wpmc_options[exclude_urls]" rows="5"
+                                    <textarea name="mdp_options[exclude_urls]" rows="5"
                                         class="large-text code"><?php echo esc_textarea($options['exclude_urls']); ?></textarea>
                                     <p class="description">One URL pattern per line. Pages matching any pattern will be
                                         excluded.<br>
@@ -376,18 +376,18 @@ class WPMC_Admin
                     </div>
                 </div>
 
-                <p class="wpmc-cache-dir-info">
-                    <strong>Cache directory:</strong> <code><?php echo esc_html(WPMC_CACHE_DIR); ?></code>
+                <p class="mdp-cache-dir-info">
+                    <strong>Cache directory:</strong> <code><?php echo esc_html(MDP_CACHE_DIR); ?></code>
                 </p>
 
                 <?php
-                $has_htaccess = WPMC_Htaccess::has_rules();
+                $has_htaccess = MDP_Htaccess::has_rules();
                 $is_apache = isset($_SERVER['SERVER_SOFTWARE']) && (
                     stripos($_SERVER['SERVER_SOFTWARE'], 'apache') !== false ||
                     stripos($_SERVER['SERVER_SOFTWARE'], 'litespeed') !== false
                 );
                 ?>
-                <div class="wpmc-cache-dir-info" style="margin-top: 8px;">
+                <div class="mdp-cache-dir-info" style="margin-top: 8px;">
                     <strong>Fast serving:</strong>
                     <?php if ($has_htaccess): ?>
                         <span style="color: #00a32a;">✅ Active (.htaccess rules installed)</span>
@@ -396,14 +396,14 @@ class WPMC_Admin
                     <?php elseif ($is_apache): ?>
                         <span style="color: #dba617;">⚠️ Not active</span>
                         <p class="description">.htaccess is not writable. <a href="#"
-                                onclick="WPMC_Htaccess.add_rules(); return false;">Try to install rules</a> or add them manually.
+                                onclick="MDP_Htaccess.add_rules(); return false;">Try to install rules</a> or add them manually.
                             Files are served via PHP fallback (~50-200ms).</p>
                     <?php else: ?>
                         <span style="color: #72777c;">ℹ️ Nginx detected — PHP fallback active</span>
                         <details style="margin-top: 8px;">
                             <summary>Show Nginx config snippet</summary>
                             <pre
-                                style="background: #1d2327; color: #c3c4c7; padding: 12px; border-radius: 4px; overflow-x: auto; margin-top: 8px;"><?php echo esc_html(WPMC_Htaccess::get_nginx_config()); ?></pre>
+                                style="background: #1d2327; color: #c3c4c7; padding: 12px; border-radius: 4px; overflow-x: auto; margin-top: 8px;"><?php echo esc_html(MDP_Htaccess::get_nginx_config()); ?></pre>
                         </details>
                     <?php endif; ?>
                 </div>
@@ -421,35 +421,35 @@ class WPMC_Admin
      */
     public function ajax_generate_now()
     {
-        check_ajax_referer('wpmc_admin_nonce', 'nonce');
+        check_ajax_referer('mdp_admin_nonce', 'nonce');
         if (!current_user_can('manage_options')) {
             wp_send_json_error('Permission denied');
         }
 
-        $generator = new WPMC_Generator();
+        $generator = new MDP_Generator();
         $total = $generator->queue_all();
 
         // Process first batch immediately.
         $remaining = $generator->process_batch();
 
         // Schedule subsequent batches.
-        if ($remaining > 0 && !wp_next_scheduled('wpmc_cron_batch')) {
-            wp_schedule_event(time() + 10, 'wpmc_batch_interval', 'wpmc_cron_batch');
+        if ($remaining > 0 && !wp_next_scheduled('mdp_cron_batch')) {
+            wp_schedule_event(time() + 10, 'mdp_batch_interval', 'mdp_cron_batch');
         }
 
         // If everything was done in one batch, generate summary files.
         if ($remaining === 0) {
             $generator->generate_summary_files();
-            $options = wpmc_get_options();
+            $options = mdp_get_options();
             if ($options['generate_llms_txt']) {
-                WPMC_Llms_Txt::generate();
+                MDP_Llms_Txt::generate();
             }
         }
 
         wp_send_json_success(array(
             'total' => $total,
             'remaining' => $remaining,
-            'status' => WPMC_Generator::get_status(),
+            'status' => MDP_Generator::get_status(),
         ));
     }
 
@@ -458,12 +458,12 @@ class WPMC_Admin
      */
     public function ajax_clear_cache()
     {
-        check_ajax_referer('wpmc_admin_nonce', 'nonce');
+        check_ajax_referer('mdp_admin_nonce', 'nonce');
         if (!current_user_can('manage_options')) {
             wp_send_json_error('Permission denied');
         }
 
-        WPMC_Generator::clear_cache();
+        MDP_Generator::clear_cache();
 
         // Queue and status are cleaned as part of clear_cache (they're JSON files in the cache dir).
 
@@ -475,9 +475,9 @@ class WPMC_Admin
      */
     public function ajax_get_status()
     {
-        check_ajax_referer('wpmc_admin_nonce', 'nonce');
-        $status = WPMC_Generator::get_status();
-        $remaining = WPMC_Generator::get_queue_count();
+        check_ajax_referer('mdp_admin_nonce', 'nonce');
+        $status = MDP_Generator::get_status();
+        $remaining = MDP_Generator::get_queue_count();
 
         wp_send_json_success(array(
             'status' => $status,
@@ -494,12 +494,12 @@ class WPMC_Admin
      */
     private function get_cache_size()
     {
-        if (!file_exists(WPMC_CACHE_DIR)) {
+        if (!file_exists(MDP_CACHE_DIR)) {
             return 0;
         }
         $size = 0;
         $files = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator(WPMC_CACHE_DIR, RecursiveDirectoryIterator::SKIP_DOTS)
+            new RecursiveDirectoryIterator(MDP_CACHE_DIR, RecursiveDirectoryIterator::SKIP_DOTS)
         );
         foreach ($files as $file) {
             $size += $file->getSize();
@@ -512,12 +512,12 @@ class WPMC_Admin
      */
     private function count_cache_files()
     {
-        if (!file_exists(WPMC_CACHE_DIR)) {
+        if (!file_exists(MDP_CACHE_DIR)) {
             return 0;
         }
         $count = 0;
         $files = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator(WPMC_CACHE_DIR, RecursiveDirectoryIterator::SKIP_DOTS)
+            new RecursiveDirectoryIterator(MDP_CACHE_DIR, RecursiveDirectoryIterator::SKIP_DOTS)
         );
         foreach ($files as $file) {
             if (preg_match('/\.(md|txt)$/i', $file->getFilename())) {

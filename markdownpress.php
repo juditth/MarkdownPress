@@ -1,13 +1,13 @@
 <?php
 /**
- * Plugin Name: WP Markdown Cache
+ * Plugin Name: MarkdownPress
  * Plugin URI:  https://github.com/juditth/wordpress-to-markdown
- * Description: Generates a Markdown cache of your entire WordPress site for AI/LLM consumption. Serves content via Accept: text/markdown header. Generates llms.txt.
+ * Description: Creates a markdown mirror of your WordPress site. Serves content via Accept: text/markdown header, generates llms.txt for AI crawlers.
  * Version:     1.0.0
  * Author:      Jitka Klingenbergová
  * Author URI:  https://vyladeny-web.cz/
  * License:     GPLv2 or later
- * Text Domain: wp-markdown-cache
+ * Text Domain: markdownpress
  */
 
 if (!defined('ABSPATH')) {
@@ -16,31 +16,31 @@ if (!defined('ABSPATH')) {
 
 /* ───────────────────────────── Constants ───────────────────────────── */
 
-define('WPMC_VERSION', '1.0.0');
-define('WPMC_PLUGIN_DIR', plugin_dir_path(__FILE__));
-define('WPMC_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('WPMC_PLUGIN_FILE', __FILE__);
+define('MDP_VERSION', '1.0.0');
+define('MDP_PLUGIN_DIR', plugin_dir_path(__FILE__));
+define('MDP_PLUGIN_URL', plugin_dir_url(__FILE__));
+define('MDP_PLUGIN_FILE', __FILE__);
 
 // Where the markdown files live — inside wp-content/ for guaranteed write permissions.
-// Use filter 'wpmc_cache_dir' to override in wp-config.php or a mu-plugin if needed.
-define('WPMC_CACHE_DIR', apply_filters('wpmc_cache_dir', WP_CONTENT_DIR . '/wp-markdown/'));
+// Use filter 'mdp_cache_dir' to override in wp-config.php or a mu-plugin if needed.
+define('MDP_CACHE_DIR', apply_filters('mdp_cache_dir', WP_CONTENT_DIR . '/wp-markdown/'));
 
 /* ───────────────────────────── Includes ───────────────────────────── */
 
-require_once WPMC_PLUGIN_DIR . 'includes/class-html-to-markdown.php';
-require_once WPMC_PLUGIN_DIR . 'includes/class-converter.php';
-require_once WPMC_PLUGIN_DIR . 'includes/class-generator.php';
-require_once WPMC_PLUGIN_DIR . 'includes/class-server.php';
-require_once WPMC_PLUGIN_DIR . 'includes/class-llms-txt.php';
-require_once WPMC_PLUGIN_DIR . 'includes/class-htaccess.php';
-require_once WPMC_PLUGIN_DIR . 'admin/class-admin.php';
+require_once MDP_PLUGIN_DIR . 'includes/class-html-to-markdown.php';
+require_once MDP_PLUGIN_DIR . 'includes/class-converter.php';
+require_once MDP_PLUGIN_DIR . 'includes/class-generator.php';
+require_once MDP_PLUGIN_DIR . 'includes/class-server.php';
+require_once MDP_PLUGIN_DIR . 'includes/class-llms-txt.php';
+require_once MDP_PLUGIN_DIR . 'includes/class-htaccess.php';
+require_once MDP_PLUGIN_DIR . 'admin/class-admin.php';
 
 /* ───────────────────────────── Bootstrap ───────────────────────────── */
 
 /**
  * Get plugin options with defaults.
  */
-function wpmc_get_options()
+function mdp_get_options()
 {
     $defaults = array(
         'enabled' => true,
@@ -59,59 +59,59 @@ function wpmc_get_options()
         'regenerate_on_save' => true,
         'content_method' => 'filter',     // 'filter' | 'http'
     );
-    $options = get_option('wpmc_options', array());
+    $options = get_option('mdp_options', array());
     return wp_parse_args($options, $defaults);
 }
 
 /**
  * Plugin activation.
  */
-function wpmc_activate()
+function mdp_activate()
 {
     // Create cache directory.
-    if (!file_exists(WPMC_CACHE_DIR)) {
-        wp_mkdir_p(WPMC_CACHE_DIR);
+    if (!file_exists(MDP_CACHE_DIR)) {
+        wp_mkdir_p(MDP_CACHE_DIR);
     }
 
     // Add .htaccess to protect direct directory listing.
-    $htaccess = WPMC_CACHE_DIR . '.htaccess';
+    $htaccess = MDP_CACHE_DIR . '.htaccess';
     if (!file_exists($htaccess)) {
         file_put_contents($htaccess, "Options -Indexes\n");
     }
 
     // Schedule initial cron.
-    wpmc_schedule_cron();
+    mdp_schedule_cron();
 
     // Set default options.
-    if (false === get_option('wpmc_options')) {
-        update_option('wpmc_options', array(), false);
+    if (false === get_option('mdp_options')) {
+        update_option('mdp_options', array(), false);
     }
 
     // Insert .htaccess rewrite rules for fast serving (Apache/LiteSpeed).
-    WPMC_Htaccess::add_rules();
+    MDP_Htaccess::add_rules();
 }
-register_activation_hook(__FILE__, 'wpmc_activate');
+register_activation_hook(__FILE__, 'mdp_activate');
 
 /**
  * Plugin deactivation.
  */
-function wpmc_deactivate()
+function mdp_deactivate()
 {
-    wp_clear_scheduled_hook('wpmc_cron_generate');
-    wp_clear_scheduled_hook('wpmc_cron_batch');
+    wp_clear_scheduled_hook('mdp_cron_generate');
+    wp_clear_scheduled_hook('mdp_cron_batch');
 
     // Remove .htaccess rules.
-    WPMC_Htaccess::remove_rules();
+    MDP_Htaccess::remove_rules();
 }
-register_deactivation_hook(__FILE__, 'wpmc_deactivate');
+register_deactivation_hook(__FILE__, 'mdp_deactivate');
 
 /* ───────────────────────────── Cron ───────────────────────────── */
 
 add_filter('cron_schedules', function ($schedules) {
-    $options = wpmc_get_options();
-    $schedules['wpmc_batch_interval'] = array(
+    $options = mdp_get_options();
+    $schedules['mdp_batch_interval'] = array(
         'interval' => max(1, intval($options['batch_delay'])) * 60,
-        'display' => __('WP Markdown Cache batch interval', 'wp-markdown-cache'),
+        'display' => __('MarkdownPress batch interval', 'markdownpress'),
     );
     return $schedules;
 });
@@ -119,11 +119,11 @@ add_filter('cron_schedules', function ($schedules) {
 /**
  * Schedule daily cron event based on user-configured time.
  */
-function wpmc_schedule_cron()
+function mdp_schedule_cron()
 {
-    wp_clear_scheduled_hook('wpmc_cron_generate');
+    wp_clear_scheduled_hook('mdp_cron_generate');
 
-    $options = wpmc_get_options();
+    $options = mdp_get_options();
     $time_parts = explode(':', $options['cron_time']);
     $hour = isset($time_parts[0]) ? intval($time_parts[0]) : 2;
     $minute = isset($time_parts[1]) ? intval($time_parts[1]) : 0;
@@ -138,35 +138,35 @@ function wpmc_schedule_cron()
         $next->modify('+1 day');
     }
 
-    wp_schedule_event($next->getTimestamp(), 'daily', 'wpmc_cron_generate');
+    wp_schedule_event($next->getTimestamp(), 'daily', 'mdp_cron_generate');
 }
 
 /**
  * Cron: start full regeneration — just queues all URLs.
  */
-add_action('wpmc_cron_generate', function () {
-    $generator = new WPMC_Generator();
+add_action('mdp_cron_generate', function () {
+    $generator = new MDP_Generator();
     $generator->queue_all();
     // Schedule batch processing if not already running.
-    if (!wp_next_scheduled('wpmc_cron_batch')) {
-        wp_schedule_event(time(), 'wpmc_batch_interval', 'wpmc_cron_batch');
+    if (!wp_next_scheduled('mdp_cron_batch')) {
+        wp_schedule_event(time(), 'mdp_batch_interval', 'mdp_cron_batch');
     }
 });
 
 /**
  * Cron: process next batch from queue.
  */
-add_action('wpmc_cron_batch', function () {
-    $generator = new WPMC_Generator();
+add_action('mdp_cron_batch', function () {
+    $generator = new MDP_Generator();
     $remaining = $generator->process_batch();
     // If everything is done, clear the batch cron and generate summary files.
     if ($remaining === 0) {
-        wp_clear_scheduled_hook('wpmc_cron_batch');
+        wp_clear_scheduled_hook('mdp_cron_batch');
         $generator->generate_summary_files();
         // Generate llms.txt.
-        $options = wpmc_get_options();
+        $options = mdp_get_options();
         if ($options['generate_llms_txt']) {
-            WPMC_Llms_Txt::generate();
+            MDP_Llms_Txt::generate();
         }
     }
 });
@@ -174,7 +174,7 @@ add_action('wpmc_cron_batch', function () {
 /* ───────────────────────────── Event-driven updates ───────────────────────────── */
 
 add_action('save_post', function ($post_id, $post) {
-    $options = wpmc_get_options();
+    $options = mdp_get_options();
     if (!$options['enabled'] || !$options['regenerate_on_save']) {
         return;
     }
@@ -183,27 +183,27 @@ add_action('save_post', function ($post_id, $post) {
     }
     if ($post->post_status !== 'publish') {
         // If unpublished, delete the cached markdown.
-        $converter = new WPMC_Converter();
+        $converter = new MDP_Converter();
         $converter->delete_cache_for_post($post_id);
         return;
     }
     // Regenerate this single post.
-    $converter = new WPMC_Converter();
+    $converter = new MDP_Converter();
     $converter->convert_post($post_id);
 }, 20, 2);
 
 add_action('delete_post', function ($post_id) {
-    $converter = new WPMC_Converter();
+    $converter = new MDP_Converter();
     $converter->delete_cache_for_post($post_id);
 });
 
 /* ───────────────────────────── Markdown serving ───────────────────────────── */
 
 // This must run VERY early.
-add_action('plugins_loaded', array('WPMC_Server', 'init'), 1);
+add_action('plugins_loaded', array('MDP_Server', 'init'), 1);
 
 /* ───────────────────────────── Admin ───────────────────────────── */
 
 if (is_admin()) {
-    new WPMC_Admin();
+    new MDP_Admin();
 }

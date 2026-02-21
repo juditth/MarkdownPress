@@ -3,14 +3,14 @@
  * Lightweight HTML → Markdown converter.
  * No external dependencies. Handles common HTML elements.
  *
- * @package WP_Markdown_Cache
+ * @package MarkdownPress
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-class WPMC_Html_To_Markdown
+class MDP_Html_To_Markdown
 {
 
     /**
@@ -35,12 +35,12 @@ class WPMC_Html_To_Markdown
         $doc = new DOMDocument();
         libxml_use_internal_errors(true);
         $doc->loadHTML(
-            '<?xml encoding="UTF-8"><div id="wpmc-root">' . $html . '</div>',
+            '<?xml encoding="UTF-8"><div id="mdp-root">' . $html . '</div>',
             LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
         );
         libxml_clear_errors();
 
-        $root = $doc->getElementById('wpmc-root');
+        $root = $doc->getElementById('mdp-root');
         if (!$root) {
             // Fallback: just strip tags.
             return self::fallback_strip($html);
@@ -346,7 +346,8 @@ class WPMC_Html_To_Markdown
 
         // Determine column count.
         $col_count = max(array_map(function ($r) {
-            return count($r['cells']); }, $rows));
+            return count($r['cells']);
+        }, $rows));
 
         $output = '';
         $header_done = false;

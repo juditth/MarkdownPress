@@ -4,19 +4,19 @@
  * When Apache mod_rewrite is available, markdown files are served directly
  * without bootstrapping WordPress/PHP at all (~2ms vs ~200ms).
  *
- * Falls back to PHP serving (WPMC_Server) when mod_rewrite is not available.
+ * Falls back to PHP serving (MDP_Server) when mod_rewrite is not available.
  *
- * @package WP_Markdown_Cache
+ * @package MarkdownPress
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-class WPMC_Htaccess
+class MDP_Htaccess
 {
 
-    const MARKER = 'WP Markdown Cache';
+    const MARKER = 'MarkdownPress';
 
     /**
      * Generate and insert .htaccess rules.
@@ -59,7 +59,7 @@ class WPMC_Htaccess
     private static function generate_rules()
     {
         // Calculate the relative path from ABSPATH to the cache directory.
-        $cache_rel = str_replace(ABSPATH, '', WPMC_CACHE_DIR);
+        $cache_rel = str_replace(ABSPATH, '', MDP_CACHE_DIR);
         $cache_rel = trim($cache_rel, '/');
 
         $rules = array();
@@ -80,7 +80,7 @@ class WPMC_Htaccess
         $rules[] = 'RewriteCond %{HTTP_ACCEPT} application/markdown [NC]';
         $rules[] = '# Check if cached markdown file exists for this URL';
         $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '%{REQUEST_URI}index.md -f';
-        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1index.md [L,T=text/markdown,E=WPMC:1]';
+        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1index.md [L,T=text/markdown,E=MDP:1]';
         $rules[] = '';
 
         // ─── Handle URLs without trailing slash ───
@@ -89,20 +89,20 @@ class WPMC_Htaccess
         $rules[] = 'RewriteCond %{HTTP_ACCEPT} text/x-markdown [NC,OR]';
         $rules[] = 'RewriteCond %{HTTP_ACCEPT} application/markdown [NC]';
         $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '%{REQUEST_URI}/index.md -f';
-        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1/index.md [L,T=text/markdown,E=WPMC:1]';
+        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1/index.md [L,T=text/markdown,E=MDP:1]';
         $rules[] = '';
 
         // ─── ?format=markdown query parameter ───
         $rules[] = '# Serve markdown when ?format=markdown is in the query string';
         $rules[] = 'RewriteCond %{QUERY_STRING} (^|&)format=markdown($|&) [NC]';
         $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '%{REQUEST_URI}index.md -f';
-        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1index.md [L,T=text/markdown,E=WPMC:1]';
+        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1index.md [L,T=text/markdown,E=MDP:1]';
         $rules[] = '';
 
         // ─── ?format=markdown without trailing slash ───
         $rules[] = 'RewriteCond %{QUERY_STRING} (^|&)format=markdown($|&) [NC]';
         $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '%{REQUEST_URI}/index.md -f';
-        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1/index.md [L,T=text/markdown,E=WPMC:1]';
+        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1/index.md [L,T=text/markdown,E=MDP:1]';
         $rules[] = '';
 
         // ─── Homepage special case ───
@@ -112,15 +112,15 @@ class WPMC_Htaccess
         $rules[] = 'RewriteCond %{HTTP_ACCEPT} application/markdown [NC,OR]';
         $rules[] = 'RewriteCond %{QUERY_STRING} (^|&)format=markdown($|&) [NC]';
         $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '/index.md -f';
-        $rules[] = 'RewriteRule ^$ /' . $cache_rel . '/index.md [L,T=text/markdown,E=WPMC:1]';
+        $rules[] = 'RewriteRule ^$ /' . $cache_rel . '/index.md [L,T=text/markdown,E=MDP:1]';
         $rules[] = '';
 
         // ─── Set proper headers for served files ───
         $rules[] = '# Set proper headers when serving markdown';
         $rules[] = '<IfModule mod_headers.c>';
-        $rules[] = '    Header set X-Content-Source "wp-markdown-cache" env=WPMC';
-        $rules[] = '    Header set X-Robots-Tag "noindex" env=WPMC';
-        $rules[] = '    Header set Cache-Control "public, max-age=3600" env=WPMC';
+        $rules[] = '    Header set X-Content-Source "markdownpress" env=MDP';
+        $rules[] = '    Header set X-Robots-Tag "noindex" env=MDP';
+        $rules[] = '    Header set Cache-Control "public, max-age=3600" env=MDP';
         $rules[] = '</IfModule>';
 
         $rules[] = '</IfModule>';
@@ -216,11 +216,11 @@ class WPMC_Htaccess
      */
     public static function get_nginx_config()
     {
-        $cache_rel = str_replace(ABSPATH, '', WPMC_CACHE_DIR);
+        $cache_rel = str_replace(ABSPATH, '', MDP_CACHE_DIR);
         $cache_rel = '/' . trim($cache_rel, '/');
 
         $config = <<<NGINX
-# WP Markdown Cache — Nginx config
+# MarkdownPress — Nginx config
 # Add this to your server {} block
 
 # Serve llms.txt
@@ -238,16 +238,16 @@ location = /llms-full.txt {
 location / {
     # Check for ?format=markdown
     if (\$arg_format = "markdown") {
-        set \$wpmc_serve 1;
+        set \$mdp_serve 1;
     }
 
     # Check Accept header
     if (\$http_accept ~* "text/markdown|text/x-markdown|application/markdown") {
-        set \$wpmc_serve 1;
+        set \$mdp_serve 1;
     }
 
     # Try to serve cached markdown
-    if (\$wpmc_serve = 1) {
+    if (\$mdp_serve = 1) {
         rewrite ^(.*)/\$ {$cache_rel}\$1/index.md break;
         rewrite ^(.*)\$ {$cache_rel}\$1/index.md break;
     }

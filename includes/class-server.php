@@ -7,14 +7,14 @@
  *
  * Runs at 'plugins_loaded' priority 1 for maximum performance.
  *
- * @package WP_Markdown_Cache
+ * @package MarkdownPress
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-class WPMC_Server
+class MDP_Server
 {
 
     /**
@@ -22,7 +22,7 @@ class WPMC_Server
      */
     public static function init()
     {
-        $options = wpmc_get_options();
+        $options = mdp_get_options();
         if (!$options['enabled']) {
             return;
         }
@@ -70,24 +70,24 @@ class WPMC_Server
         $path = trim($path, '/');
 
         if (empty($path)) {
-            $file = WPMC_CACHE_DIR . 'index.md';
+            $file = MDP_CACHE_DIR . 'index.md';
         } else {
             // Remove file extension if present.
             $path = preg_replace('/\.(html?|php)$/i', '', $path);
-            $file = WPMC_CACHE_DIR . $path . '/index.md';
+            $file = MDP_CACHE_DIR . $path . '/index.md';
         }
 
         // Also try without trailing /index.md (for direct .md file paths).
         if (!file_exists($file)) {
-            $file = WPMC_CACHE_DIR . $path . '.md';
+            $file = MDP_CACHE_DIR . $path . '.md';
         }
 
         // Try serving special files like _sitemap.md or _all.md.
         if (!file_exists($file)) {
             if ($path === '_sitemap' || $path === 'wp-markdown/_sitemap') {
-                $file = WPMC_CACHE_DIR . '_sitemap.md';
+                $file = MDP_CACHE_DIR . '_sitemap.md';
             } elseif ($path === '_all' || $path === 'wp-markdown/_all') {
-                $file = WPMC_CACHE_DIR . '_all.md';
+                $file = MDP_CACHE_DIR . '_all.md';
             }
         }
 
@@ -110,7 +110,7 @@ class WPMC_Server
         $path = trim($path, '/');
 
         if ($path === 'llms.txt') {
-            $file = WPMC_CACHE_DIR . 'llms.txt';
+            $file = MDP_CACHE_DIR . 'llms.txt';
             if (file_exists($file)) {
                 header('Content-Type: text/plain; charset=UTF-8');
                 header('X-Robots-Tag: noindex');
@@ -121,7 +121,7 @@ class WPMC_Server
         }
 
         if ($path === 'llms-full.txt') {
-            $file = WPMC_CACHE_DIR . 'llms-full.txt';
+            $file = MDP_CACHE_DIR . 'llms-full.txt';
             if (file_exists($file)) {
                 header('Content-Type: text/plain; charset=UTF-8');
                 header('X-Robots-Tag: noindex');
@@ -152,7 +152,7 @@ class WPMC_Server
         header('Content-Type: text/markdown; charset=UTF-8');
         header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $modified) . ' GMT');
         header('Cache-Control: public, max-age=3600');
-        header('X-Content-Source: wp-markdown-cache');
+        header('X-Content-Source: markdownpress');
         header('Content-Length: ' . strlen($content));
         header('X-Robots-Tag: noindex');
 

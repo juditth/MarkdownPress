@@ -6,14 +6,14 @@
  * Uses apply_filters('the_content') for builder compatibility.
  * Falls back to HTTP fetch if needed.
  *
- * @package WP_Markdown_Cache
+ * @package MarkdownPress
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-class WPMC_Converter
+class MDP_Converter
 {
 
     /**
@@ -29,7 +29,7 @@ class WPMC_Converter
             return false;
         }
 
-        $options = wpmc_get_options();
+        $options = mdp_get_options();
 
         // Check if this post type should be processed.
         $allowed_types = $this->get_allowed_post_types();
@@ -50,7 +50,7 @@ class WPMC_Converter
         }
 
         // Convert to markdown.
-        $markdown = WPMC_Html_To_Markdown::convert($html);
+        $markdown = MDP_Html_To_Markdown::convert($html);
 
         // Build frontmatter.
         $frontmatter = '';
@@ -96,7 +96,7 @@ class WPMC_Converter
             return false;
         }
 
-        $options = wpmc_get_options();
+        $options = mdp_get_options();
 
         // Build content: term description + list of posts.
         $md = '';
@@ -115,7 +115,7 @@ class WPMC_Converter
         $md .= "# {$term->name}\n\n";
 
         if (!empty($term->description)) {
-            $md .= WPMC_Html_To_Markdown::convert($term->description) . "\n\n";
+            $md .= MDP_Html_To_Markdown::convert($term->description) . "\n\n";
         }
 
         // List posts in this term.
@@ -165,7 +165,7 @@ class WPMC_Converter
             return false;
         }
 
-        $options = wpmc_get_options();
+        $options = mdp_get_options();
         $md = '';
 
         if ($options['frontmatter']) {
@@ -216,7 +216,7 @@ class WPMC_Converter
     public function convert_homepage()
     {
         $home_url = home_url('/');
-        $options = wpmc_get_options();
+        $options = mdp_get_options();
 
         // Check if it's a static page.
         $front_page_id = get_option('page_on_front');
@@ -252,7 +252,7 @@ class WPMC_Converter
             }
         }
 
-        $file_path = WPMC_CACHE_DIR . 'index.md';
+        $file_path = MDP_CACHE_DIR . 'index.md';
         return (bool) file_put_contents($file_path, $md);
     }
 
@@ -271,7 +271,7 @@ class WPMC_Converter
         }
         // Try removing empty parent directories.
         $dir = dirname($file_path);
-        while ($dir !== WPMC_CACHE_DIR && is_dir($dir)) {
+        while ($dir !== MDP_CACHE_DIR && is_dir($dir)) {
             $files = glob($dir . '/*');
             if (empty($files)) {
                 rmdir($dir);
@@ -328,7 +328,7 @@ class WPMC_Converter
     {
         $response = wp_remote_get($url, array(
             'timeout' => 30,
-            'user-agent' => 'WP-Markdown-Cache/1.0',
+            'user-agent' => 'MarkdownPress/1.0',
             'headers' => array(
                 'Accept' => 'text/html',
             ),
@@ -381,13 +381,13 @@ class WPMC_Converter
         $path = trim($path, '/');
 
         if (empty($path)) {
-            return WPMC_CACHE_DIR . 'index.md';
+            return MDP_CACHE_DIR . 'index.md';
         }
 
         // Remove .html / .php extension if present.
         $path = preg_replace('/\.(html?|php)$/i', '', $path);
 
-        return WPMC_CACHE_DIR . $path . '/index.md';
+        return MDP_CACHE_DIR . $path . '/index.md';
     }
 
     /**
@@ -453,7 +453,7 @@ class WPMC_Converter
      */
     private function is_excluded($url)
     {
-        $options = wpmc_get_options();
+        $options = mdp_get_options();
         $excludes = array_filter(array_map('trim', explode("\n", $options['exclude_urls'])));
 
         // Always exclude admin, login, wp-json.
@@ -483,7 +483,7 @@ class WPMC_Converter
      */
     public function get_allowed_post_types()
     {
-        $options = wpmc_get_options();
+        $options = mdp_get_options();
 
         // If user has selected specific types, use those.
         if (!empty($options['post_types']) && is_array($options['post_types'])) {
