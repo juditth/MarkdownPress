@@ -60,7 +60,7 @@ class MDP_Converter
 
         // Get rendered content.
         $html = $this->get_rendered_content($post, $options['content_method']);
-        if (empty(trim(strip_tags($html)))) {
+        if (empty(trim(wp_strip_all_tags($html)))) {
             $this->last_error = "Rendered content is empty (tried method: {$options['content_method']}).";
             return false;
         }
@@ -287,14 +287,25 @@ class MDP_Converter
         }
         $file_path = $this->url_to_cache_path($permalink);
         if (file_exists($file_path)) {
-            unlink($file_path);
+            wp_delete_file($file_path);
         }
         // Try removing empty parent directories.
         $dir = dirname($file_path);
+
+        global $wp_filesystem;
+        if (empty($wp_filesystem)) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            WP_Filesystem();
+        }
+
         while ($dir !== MDP_CACHE_DIR && is_dir($dir)) {
             $files = glob($dir . '/*');
             if (empty($files)) {
-                rmdir($dir);
+                if ($wp_filesystem) {
+                    $wp_filesystem->rmdir($dir);
+                } else {
+                    @rmdir($dir); // Fallback.
+                }
                 $dir = dirname($dir);
             } else {
                 break;
@@ -321,7 +332,7 @@ class MDP_Converter
 
             // SPECIAL CASE: Bricks builder. 
             // If the content is empty but it's a Bricks page, try explicit render.
-            if (empty(trim(strip_tags($html))) && class_exists('\Bricks\Frontend')) {
+            if (empty(trim(wp_strip_all_tags($html))) && class_exists('\Bricks\Frontend')) {
                 $html = \Bricks\Frontend::render_data($post->ID);
             }
 
@@ -333,7 +344,7 @@ class MDP_Converter
                 wp_reset_postdata();
             }
 
-            if (!empty(trim(strip_tags($html)))) {
+            if (!empty(trim(wp_strip_all_tags($html)))) {
                 return $html;
             }
         }

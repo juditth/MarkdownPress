@@ -43,8 +43,9 @@ class MDP_Server
         $wants_markdown = false;
 
         // Check Accept header.
-        if (isset($_SERVER['HTTP_ACCEPT'])) {
-            $accept = strtolower($_SERVER['HTTP_ACCEPT']);
+        $http_accept = isset($_SERVER['HTTP_ACCEPT']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_ACCEPT'])) : '';
+        if ($http_accept) {
+            $accept = strtolower($http_accept);
             if (
                 strpos($accept, 'text/markdown') !== false ||
                 strpos($accept, 'text/x-markdown') !== false ||
@@ -55,7 +56,7 @@ class MDP_Server
         }
 
         // Also support ?format=markdown query parameter.
-        if (isset($_GET['format']) && $_GET['format'] === 'markdown') {
+        if (isset($_GET['format']) && 'markdown' === $_GET['format']) {
             $wants_markdown = true;
         }
 
@@ -64,7 +65,7 @@ class MDP_Server
         }
 
         // Determine file path from current URL.
-        $request_uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/';
+        $request_uri = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '/';
         // Remove query string.
         $path = strtok($request_uri, '?');
         $path = trim($path, '/');
@@ -93,7 +94,9 @@ class MDP_Server
 
         if (!file_exists($file)) {
             // On-the-fly generation: Try to resolve URL to a post.
-            $full_url = (is_ssl() ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+            $http_host = isset($_SERVER['HTTP_HOST']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_HOST'])) : '';
+            $request_uri = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
+            $full_url = (is_ssl() ? 'https://' : 'http://') . $http_host . $request_uri;
             $post_id = url_to_postid($full_url);
 
             if ($post_id) {
@@ -119,7 +122,7 @@ class MDP_Server
      */
     private static function maybe_serve_llms_txt()
     {
-        $request_uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
+        $request_uri = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
         $path = strtok($request_uri, '?');
         $path = trim($path, '/');
 
@@ -155,8 +158,9 @@ class MDP_Server
         $modified = filemtime($file);
 
         // Handle If-Modified-Since for caching.
-        if (isset($_SERVER['HTTP_IF_MODIFIED_SINCE'])) {
-            $since = strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']);
+        $if_modified_since = isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_IF_MODIFIED_SINCE'])) : '';
+        if ($if_modified_since) {
+            $since = strtotime($if_modified_since);
             if ($since >= $modified) {
                 header('HTTP/1.1 304 Not Modified');
                 exit;
@@ -170,6 +174,7 @@ class MDP_Server
         header('Content-Length: ' . strlen($content));
         header('X-Robots-Tag: noindex');
 
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
         echo $content;
         exit;
     }

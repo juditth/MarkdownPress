@@ -136,27 +136,27 @@ class MDP_Admin
                     <div class="mdp-card-icon dashicons dashicons-media-document"></div>
                     <div class="mdp-card-content">
                         <div class="mdp-card-number">
-                            <?php echo number_format($cache_files); ?>
+                            <?php echo esc_html(number_format($cache_files)); ?>
                         </div>
-                        <div class="mdp-card-label">Processed files</div>
+                        <div class="mdp-card-label"><?php esc_html_e('Processed files', 'markdownpress'); ?></div>
                     </div>
                 </div>
                 <div class="mdp-card">
                     <div class="mdp-card-icon dashicons dashicons-database"></div>
                     <div class="mdp-card-content">
                         <div class="mdp-card-number">
-                            <?php echo size_format($cache_size); ?>
+                            <?php echo esc_html(size_format($cache_size)); ?>
                         </div>
-                        <div class="mdp-card-label">Markdown files folder size</div>
+                        <div class="mdp-card-label"><?php esc_html_e('Markdown files folder size', 'markdownpress'); ?></div>
                     </div>
                 </div>
                 <div class="mdp-card">
                     <div class="mdp-card-icon dashicons dashicons-clock"></div>
                     <div class="mdp-card-content">
                         <div class="mdp-card-number">
-                            <?php echo $next_cron ? wp_date('H:i', $next_cron) : '—'; ?>
+                            <?php echo esc_html($next_cron ? wp_date('H:i', $next_cron) : '—'); ?>
                         </div>
-                        <div class="mdp-card-label">Next cron run</div>
+                        <div class="mdp-card-label"><?php esc_html_e('Next cron run', 'markdownpress'); ?></div>
                     </div>
                 </div>
                 <div class="mdp-card <?php echo $is_processing ? 'mdp-card-active' : ''; ?>">
@@ -165,14 +165,14 @@ class MDP_Admin
                     </div>
                     <div class="mdp-card-content">
                         <div class="mdp-card-number" id="mdp-status-text">
-                            <?php echo $is_processing ? 'Processing...' : 'Idle'; ?>
+                            <?php echo esc_html($is_processing ? __('Processing...', 'markdownpress') : __('Idle', 'markdownpress')); ?>
                         </div>
                         <div class="mdp-card-label" id="mdp-status-detail">
                             <?php
                             if ($status['total'] > 0) {
-                                echo $status['processed'] . ' / ' . $status['total'];
+                                echo esc_html($status['processed']) . ' / ' . esc_html($status['total']);
                                 if ($status['errors'] > 0) {
-                                    echo ' (' . $status['errors'] . ' errors)';
+                                    echo ' (' . esc_html($status['errors']) . ' ' . esc_html__('errors', 'markdownpress') . ')';
                                 }
                             }
                             ?>
@@ -187,7 +187,8 @@ class MDP_Admin
                     <span class="dashicons dashicons-controls-play"></span>
                     Generate Now
                 </button>
-                <button id="mdp-stop-generation" class="button button-secondary button-hero button-stop" style="<?php echo $is_processing ? '' : 'display:none;'; ?>">
+                <button id="mdp-stop-generation" class="button button-secondary button-hero button-stop"
+                    style="<?php echo $is_processing ? '' : 'display:none;'; ?>">
                     <span class="dashicons dashicons-controls-pause"></span>
                     Stop
                 </button>
@@ -197,17 +198,17 @@ class MDP_Admin
                 </button>
 
                 <?php if (file_exists(MDP_CACHE_DIR . 'llms.txt')): ?>
-                    <a href="<?php echo home_url('/llms.txt'); ?>" target="_blank" class="button">
+                    <a href="<?php echo esc_url(home_url('/llms.txt')); ?>" target="_blank" class="button">
                         <span class="dashicons dashicons-external"></span>
-                        View llms.txt
+                        <?php esc_html_e('View llms.txt', 'markdownpress'); ?>
                     </a>
                 <?php endif; ?>
 
                 <?php if ($cache_files > 0): ?>
-                    <a href="<?php echo esc_url(add_query_arg('mdp_download_zip', '1', admin_url('options-general.php?page=markdownpress'))); ?>"
-                        class="button">
+                    <?php $download_url = wp_nonce_url(add_query_arg('mdp_download_zip', '1', admin_url('options-general.php?page=markdownpress')), 'mdp_download_zip'); ?>
+                    <a href="<?php echo esc_url($download_url); ?>" class="button">
                         <span class="dashicons dashicons-archive"></span>
-                        Download ZIP
+                        <?php esc_html_e('Download ZIP', 'markdownpress'); ?>
                     </a>
                 <?php endif; ?>
             </div>
@@ -216,13 +217,13 @@ class MDP_Admin
             <div id="mdp-progress" class="mdp-progress" style="<?php echo $is_processing ? '' : 'display:none;'; ?>">
                 <div class="mdp-progress-bar">
                     <div class="mdp-progress-fill"
-                        style="width: <?php echo $status['total'] > 0 ? round($status['processed'] / $status['total'] * 100) : 0; ?>%">
+                        style="width: <?php echo $status['total'] > 0 ? esc_attr(round($status['processed'] / $status['total'] * 100)) : 0; ?>%">
                     </div>
                 </div>
                 <div class="mdp-progress-text" id="mdp-progress-text">
                     <?php if ($status['total'] > 0): ?>
-                        <?php echo $status['processed']; ?> /
-                        <?php echo $status['total']; ?> pages
+                        <?php echo esc_html($status['processed']); ?> /
+                        <?php echo esc_html($status['total']); ?>             <?php esc_html_e('pages', 'markdownpress'); ?>
                     <?php endif; ?>
                 </div>
             </div>
@@ -324,8 +325,9 @@ class MDP_Admin
                                 <td>
                                     <input type="time" name="mdp_options[cron_time]"
                                         value="<?php echo esc_attr($options['cron_time']); ?>" />
-                                    <p class="description">Daily full regeneration time (server timezone:
-                                        <?php echo wp_timezone_string(); ?>)
+                                    <p class="description">
+                                        <?php esc_html_e('Daily full regeneration time (server timezone:', 'markdownpress'); ?>
+                                        <?php echo esc_html(wp_timezone_string()); ?>)
                                     </p>
                                 </td>
                             </tr>
@@ -418,10 +420,8 @@ class MDP_Admin
 
                 <?php
                 $has_htaccess = MDP_Htaccess::has_rules();
-                $is_apache = isset($_SERVER['SERVER_SOFTWARE']) && (
-                    stripos($_SERVER['SERVER_SOFTWARE'], 'apache') !== false ||
-                    stripos($_SERVER['SERVER_SOFTWARE'], 'litespeed') !== false
-                );
+                $server_software = isset($_SERVER['SERVER_SOFTWARE']) ? sanitize_text_field(wp_unslash($_SERVER['SERVER_SOFTWARE'])) : '';
+                $is_apache = stripos($server_software, 'apache') !== false || stripos($server_software, 'litespeed') !== false;
                 ?>
                 <div class="mdp-cache-dir-info" style="margin-top: 8px;">
                     <strong>Fast serving:</strong>
@@ -504,7 +504,7 @@ class MDP_Admin
 
         // 2. Delete queue file.
         if (file_exists(MDP_CACHE_DIR . '_queue.json')) {
-            @unlink(MDP_CACHE_DIR . '_queue.json');
+            wp_delete_file(MDP_CACHE_DIR . '_queue.json');
         }
 
         // 3. Finalize status.
@@ -562,8 +562,10 @@ class MDP_Admin
             return;
         }
 
+        check_admin_referer('mdp_download_zip', '_wpnonce');
+
         if (!class_exists('ZipArchive')) {
-            wp_die('ZipArchive PHP extension is not enabled on your server.');
+            wp_die(esc_html__('ZipArchive PHP extension is not enabled on your server.', 'markdownpress'));
         }
 
         $zip_file = tempnam(sys_get_temp_dir(), 'mdp');
@@ -590,15 +592,17 @@ class MDP_Admin
         $zip->close();
 
         // Serve the file.
-        $filename = 'markdown-cache-' . date('Y-m-d') . '.zip';
+        $filename = 'markdown-cache-' . wp_date('Y-m-d') . '.zip';
         header('Content-Type: application/zip');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Disposition: attachment; filename="' . esc_attr($filename) . '"');
         header('Content-Length: ' . filesize($zip_file));
         header('Pragma: no-cache');
         header('Expires: 0');
 
+        // Note: Using direct readfile/unlink for temp download as WP_Filesystem 
+        // is overkill for serving a single temporary system file to header.
         readfile($zip_file);
-        unlink($zip_file);
+        wp_delete_file($zip_file);
         exit;
     }
 

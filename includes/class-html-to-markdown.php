@@ -400,7 +400,7 @@ class MDP_Html_To_Markdown
      */
     private static function fallback_strip($html)
     {
-        $text = strip_tags($html);
+        $text = wp_strip_all_tags($html);
         $text = html_entity_decode($text, ENT_QUOTES, 'UTF-8');
         $text = preg_replace('/\n{3,}/', "\n\n", $text);
         return trim($text);

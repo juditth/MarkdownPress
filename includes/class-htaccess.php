@@ -43,8 +43,13 @@ class MDP_Htaccess
             return;
         }
 
-        $htaccess_file = self::get_htaccess_path();
-        if (!file_exists($htaccess_file) || !is_writable($htaccess_file)) {
+        global $wp_filesystem;
+        if (empty($wp_filesystem)) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            WP_Filesystem();
+        }
+
+        if (!$wp_filesystem || !$wp_filesystem->exists($htaccess_file) || !$wp_filesystem->is_writable($htaccess_file)) {
             return;
         }
 
@@ -140,7 +145,13 @@ class MDP_Htaccess
             return false;
         }
 
-        if (!is_writable($htaccess_file)) {
+        global $wp_filesystem;
+        if (empty($wp_filesystem)) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            WP_Filesystem();
+        }
+
+        if (!$wp_filesystem || !$wp_filesystem->is_writable($htaccess_file)) {
             return false;
         }
 
@@ -184,6 +195,8 @@ class MDP_Htaccess
         return ABSPATH . '.htaccess';
     }
 
+
+
     /**
      * Check if running on Apache.
      */
@@ -192,7 +205,8 @@ class MDP_Htaccess
         if (function_exists('apache_get_version')) {
             return true;
         }
-        $server = isset($_SERVER['SERVER_SOFTWARE']) ? strtolower($_SERVER['SERVER_SOFTWARE']) : '';
+        $server_software = isset($_SERVER['SERVER_SOFTWARE']) ? sanitize_text_field(wp_unslash($_SERVER['SERVER_SOFTWARE'])) : '';
+        $server = strtolower($server_software);
         return strpos($server, 'apache') !== false || strpos($server, 'litespeed') !== false;
     }
 
@@ -219,40 +233,34 @@ class MDP_Htaccess
         $cache_rel = str_replace(ABSPATH, '', MDP_CACHE_DIR);
         $cache_rel = '/' . trim($cache_rel, '/');
 
-        $config = <<<NGINX
-# MarkdownPress — Nginx config
-# Add this to your server {} block
+        $config = "# MarkdownPress — Nginx config\n";
+        $config .= "# Add this to your server {} block\n\n";
+        $config .= "# Serve llms.txt\n";
+        $config .= "location = /llms.txt {\n";
+        $config .= "    alias " . $cache_rel . "/llms.txt;\n";
+        $config .= "    default_type text/plain;\n";
+        $config .= "}\n\n";
+        $config .= "location = /llms-full.txt {\n";
+        $config .= "    alias " . $cache_rel . "/llms-full.txt;\n";
+        $config .= "    default_type text/plain;\n";
+        $config .= "}\n\n";
+        $config .= "# Serve markdown when Accept header or ?format=markdown\n";
+        $config .= "location / {\n";
+        $config .= "    # Check for ?format=markdown\n";
+        $config .= "    if (\$arg_format = \"markdown\") {\n";
+        $config .= "        set \$mdp_serve 1;\n";
+        $config .= "    }\n\n";
+        $config .= "    # Check Accept header\n";
+        $config .= "    if (\$http_accept ~* \"text/markdown|text/x-markdown|application/markdown\") {\n";
+        $config .= "        set \$mdp_serve 1;\n";
+        $config .= "    }\n\n";
+        $config .= "    # Try to serve cached markdown\n";
+        $config .= "    if (\$mdp_serve = 1) {\n";
+        $config .= "        rewrite ^(.*)/\$ " . $cache_rel . "\$1/index.md break;\n";
+        $config .= "        rewrite ^(.*)\$ " . $cache_rel . "\$1/index.md break;\n";
+        $config .= "    }\n";
+        $config .= "}\n";
 
-# Serve llms.txt
-location = /llms.txt {
-    alias {$cache_rel}/llms.txt;
-    default_type text/plain;
-}
-
-location = /llms-full.txt {
-    alias {$cache_rel}/llms-full.txt;
-    default_type text/plain;
-}
-
-# Serve markdown when Accept header or ?format=markdown
-location / {
-    # Check for ?format=markdown
-    if (\$arg_format = "markdown") {
-        set \$mdp_serve 1;
-    }
-
-    # Check Accept header
-    if (\$http_accept ~* "text/markdown|text/x-markdown|application/markdown") {
-        set \$mdp_serve 1;
-    }
-
-    # Try to serve cached markdown
-    if (\$mdp_serve = 1) {
-        rewrite ^(.*)/\$ {$cache_rel}\$1/index.md break;
-        rewrite ^(.*)\$ {$cache_rel}\$1/index.md break;
-    }
-}
-NGINX;
         return $config;
     }
 }

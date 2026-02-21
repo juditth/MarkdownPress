@@ -63,7 +63,7 @@ class MDP_Generator
 
         // Clear old error log.
         if (file_exists(self::get_error_log_file())) {
-            @unlink(self::get_error_log_file());
+            wp_delete_file(self::get_error_log_file());
         }
 
         return count($queue);
@@ -86,7 +86,7 @@ class MDP_Generator
             file_put_contents(self::get_status_file(), wp_json_encode($status));
             // Remove empty queue file.
             if (file_exists(self::get_queue_file())) {
-                @unlink(self::get_queue_file());
+                wp_delete_file(self::get_queue_file());
             }
             return 0;
         }
@@ -510,6 +510,12 @@ class MDP_Generator
      */
     private static function delete_directory_contents($dir)
     {
+        global $wp_filesystem;
+        if (empty($wp_filesystem)) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            WP_Filesystem();
+        }
+
         $items = glob($dir . '{,.}[!.,!..]*', GLOB_BRACE | GLOB_MARK);
         foreach ($items as $item) {
             if (basename($item) === '.htaccess') {
@@ -517,9 +523,13 @@ class MDP_Generator
             }
             if (is_dir($item)) {
                 self::delete_directory_contents($item);
-                @rmdir($item);
+                if ($wp_filesystem) {
+                    $wp_filesystem->rmdir($item);
+                } else {
+                    @rmdir($item);
+                }
             } else {
-                unlink($item);
+                wp_delete_file($item);
             }
         }
     }
