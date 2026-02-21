@@ -21,8 +21,9 @@ define('WPMC_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('WPMC_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('WPMC_PLUGIN_FILE', __FILE__);
 
-// Where the markdown files live (same level as wp-content/)
-define('WPMC_CACHE_DIR', ABSPATH . 'wp-markdown/');
+// Where the markdown files live — inside wp-content/ for guaranteed write permissions.
+// Use filter 'wpmc_cache_dir' to override in wp-config.php or a mu-plugin if needed.
+define('WPMC_CACHE_DIR', apply_filters('wpmc_cache_dir', WP_CONTENT_DIR . '/wp-markdown/'));
 
 /* ───────────────────────────── Includes ───────────────────────────── */
 
