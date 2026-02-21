@@ -139,6 +139,10 @@ class MDP_Html_To_Markdown
                     $src = $child->getAttribute('src');
                     $alt = $child->getAttribute('alt') ?: '';
                     if ($src) {
+                        // Ensure absolute URL.
+                        if (strpos($src, 'http') !== 0 && strpos($src, '//') !== 0) {
+                            $src = home_url($src);
+                        }
                         $output .= "![{$alt}]({$src})";
                     }
                     break;
