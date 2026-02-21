@@ -239,6 +239,10 @@ class MDP_Admin
                                         <input type="checkbox" name="mdp_options[enabled]" value="1" <?php checked($options['enabled']); ?> />
                                         Enable MarkdownPress and serving
                                     </label>
+                                    <p class="description">
+                                        Allows serving Markdown automatically when a request is made with
+                                        <code>Accept: text/markdown</code> in header.
+                                    </p>
                                 </td>
                             </tr>
                             <tr>
