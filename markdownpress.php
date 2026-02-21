@@ -3,7 +3,7 @@
  * Plugin Name: MarkdownPress
  * Plugin URI:  https://github.com/juditth/wordpress-to-markdown
  * Description: Creates a markdown mirror of your WordPress site. Serves content via Accept: text/markdown header, generates llms.txt for AI crawlers.
- * Version:     1.0.0
+ * Version:     1.1.0
  * Author:      Jitka Klingenbergová
  * Author URI:  https://vyladeny-web.cz/
  * License:     GPLv2 or later
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 
 /* ───────────────────────────── Constants ───────────────────────────── */
 
-define('MDP_VERSION', '1.0.0');
+define('MDP_VERSION', '1.1.0');
 define('MDP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MDP_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('MDP_PLUGIN_FILE', __FILE__);
@@ -44,20 +44,20 @@ function mdp_get_options()
 {
     $defaults = array(
         'enabled' => true,
-        'source' => 'all',        // 'all' | 'sitemap'
+        'source' => 'sitemap',        // 'all' | 'sitemap'
         'post_types' => array('post', 'page'),
         'include_archives' => true,
         'include_authors' => false,
         'include_taxonomies' => true,
         'cron_time' => '02:00',
-        'batch_size' => 20,
+        'batch_size' => 10,
         'batch_delay' => 2,            // minutes between batches
         'generate_all_md' => true,
         'generate_llms_txt' => true,
         'exclude_urls' => '',
         'frontmatter' => true,
         'regenerate_on_save' => true,
-        'content_method' => 'filter',     // 'filter' | 'http'
+        'content_method' => 'both',     // 'filter' | 'http' | 'both'
     );
     $options = get_option('mdp_options', array());
     return wp_parse_args($options, $defaults);

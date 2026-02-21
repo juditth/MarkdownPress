@@ -23,6 +23,9 @@ class MDP_Admin
         add_action('wp_ajax_mdp_generate_now', array($this, 'ajax_generate_now'));
         add_action('wp_ajax_mdp_clear_cache', array($this, 'ajax_clear_cache'));
         add_action('wp_ajax_mdp_get_status', array($this, 'ajax_get_status'));
+
+        // Add settings link to plugins page.
+        add_filter('plugin_action_links_' . plugin_basename(MDP_PLUGIN_FILE), array($this, 'add_settings_link'));
     }
 
     /**
@@ -37,6 +40,16 @@ class MDP_Admin
             'markdownpress',
             array($this, 'render_page')
         );
+    }
+
+    /**
+     * Add "Settings" link to the plugins page.
+     */
+    public function add_settings_link($links)
+    {
+        $settings_link = '<a href="options-general.php?page=markdownpress">' . __('Settings', 'markdownpress') . '</a>';
+        array_unshift($links, $settings_link);
+        return $links;
     }
 
     /**
@@ -221,12 +234,12 @@ class MDP_Admin
                                 <th>Content source</th>
                                 <td>
                                     <label>
-                                        <input type="radio" name="mdp_options[source]" value="all" <?php checked($options['source'], 'all'); ?> />
-                                        All published content (posts, pages, CPT, taxonomies, authors)
+                                        <input type="radio" name="mdp_options[source]" value="sitemap" <?php checked($options['source'], 'sitemap'); ?> />
+                                        XML Sitemap (Best for builders)
                                     </label><br>
                                     <label>
-                                        <input type="radio" name="mdp_options[source]" value="sitemap" <?php checked($options['source'], 'sitemap'); ?> />
-                                        URLs from XML Sitemap only
+                                        <input type="radio" name="mdp_options[source]" value="all" <?php checked($options['source'], 'all'); ?> />
+                                        All published content (Core only - posts, pages, etc.)
                                     </label>
                                 </td>
                             </tr>
@@ -260,12 +273,12 @@ class MDP_Admin
                                 <th>Rendering method</th>
                                 <td>
                                     <select name="mdp_options[content_method]">
+                                        <option value="both" <?php selected($options['content_method'], 'both'); ?>>Combined
+                                            (Smart Fallback)</option>
                                         <option value="filter" <?php selected($options['content_method'], 'filter'); ?>>
-                                            WordPress filters (fast, works with most builders)</option>
-                                        <option value="http" <?php selected($options['content_method'], 'http'); ?>>HTTP fetch
-                                            (slow, but 100% accurate)</option>
-                                        <option value="both" <?php selected($options['content_method'], 'both'); ?>>Try
-                                            filters first, fallback to HTTP</option>
+                                            WordPress Filters (Fast)</option>
+                                        <option value="http" <?php selected($options['content_method'], 'http'); ?>>HTTP Fetch
+                                            (100% Accurate)</option>
                                     </select>
                                     <p class="description">
                                         <strong>Filters</strong> — uses <code>apply_filters('the_content')</code>, works with

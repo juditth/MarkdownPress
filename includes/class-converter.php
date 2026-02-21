@@ -299,6 +299,12 @@ class MDP_Converter
 
             $html = apply_filters('the_content', $post->post_content);
 
+            // SPECIAL CASE: Bricks builder. 
+            // If the content is empty but it's a Bricks page, try explicit render.
+            if (empty(trim(strip_tags($html))) && class_exists('\Bricks\Frontend')) {
+                $html = \Bricks\Frontend::render_data($post->ID);
+            }
+
             // Restore original.
             if ($original_post) {
                 $GLOBALS['post'] = $original_post;
@@ -344,8 +350,12 @@ class MDP_Converter
         }
 
         // Try to extract main content area.
-        // Look for common content selectors.
+        // Look for common content selectors across various themes and builders.
         $selectors = array(
+            '<div[^>]*id="bricks-content"[^>]*>(.*?)<\/div>',
+            '<div[^>]*class="[^"]*elementor[^"]*"[^>]*>(.*?)<\/div>',
+            '<div[^>]*class="[^"]*fl-builder-content[^"]*"[^>]*>(.*?)<\/div>',
+            '<div[^>]*class="[^"]*et_builder_inner_content[^"]*"[^>]*>(.*?)<\/div>',
             '<main[^>]*>(.*?)<\/main>',
             '<article[^>]*>(.*?)<\/article>',
             '<div[^>]*class="[^"]*entry-content[^"]*"[^>]*>(.*?)<\/div>',

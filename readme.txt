@@ -3,7 +3,7 @@ Contributors: Jitka Klingenbergová
 Tags: markdown, ai, llm, cache, content
 Requires at least: 5.5
 Tested up to: 6.7
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 Requires PHP: 7.4
 License: GPLv2 or later
 
@@ -80,6 +80,13 @@ It's an emerging standard (llmstxt.org) for describing your website to AI tools 
 No. Generation happens in the background via WP Cron. Serving cached markdown files is faster than normal page rendering because it reads a static file.
 
 == Changelog ==
+
+= 1.1.0 =
+* Renamed plugin to MarkdownPress.
+* Added support for Bricks, Elementor, and other page builders.
+* Improved content rendering using combined PHP and HTTP fetch methods.
+* Changed default content source to XML Sitemap.
+* Standardized internal prefixes back to MDP / mdp.
 
 = 1.0.0 =
 * Initial release
