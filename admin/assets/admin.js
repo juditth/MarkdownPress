@@ -36,6 +36,29 @@
         });
     });
 
+    // Stop Generation button.
+    $('#mdp-stop-generation').on('click', function (e) {
+        e.preventDefault();
+        var $btn = $(this);
+
+        if (!confirm('Stop the current generation? You can start again later.')) return;
+
+        $btn.prop('disabled', true).text('Stopping...');
+
+        $.post(mdpAdmin.ajaxUrl, {
+            action: 'mdp_stop_generation',
+            nonce: mdpAdmin.nonce,
+        }, function (response) {
+            if (response.success) {
+                stopPolling();
+                location.reload();
+            } else {
+                alert('Error: ' + (response.data || 'Unknown error'));
+                $btn.prop('disabled', false).text('Stop');
+            }
+        });
+    });
+
     // Clear Cache button.
     $('#mdp-clear-cache').on('click', function (e) {
         e.preventDefault();

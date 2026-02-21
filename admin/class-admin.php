@@ -21,6 +21,7 @@ class MDP_Admin
 
         // AJAX handlers.
         add_action('wp_ajax_mdp_generate_now', array($this, 'ajax_generate_now'));
+        add_action('wp_ajax_mdp_stop_generation', array($this, 'ajax_stop_generation'));
         add_action('wp_ajax_mdp_clear_cache', array($this, 'ajax_clear_cache'));
         add_action('wp_ajax_mdp_get_status', array($this, 'ajax_get_status'));
 
@@ -185,6 +186,10 @@ class MDP_Admin
                 <button id="mdp-generate-now" class="button button-primary button-hero" <?php echo $is_processing ? 'disabled' : ''; ?>>
                     <span class="dashicons dashicons-controls-play"></span>
                     Generate Now
+                </button>
+                <button id="mdp-stop-generation" class="button button-secondary button-hero button-stop" style="<?php echo $is_processing ? '' : 'display:none;'; ?>">
+                    <span class="dashicons dashicons-controls-pause"></span>
+                    Stop
                 </button>
                 <button id="mdp-clear-cache" class="button button-secondary">
                     <span class="dashicons dashicons-trash"></span>
@@ -482,6 +487,34 @@ class MDP_Admin
             'remaining' => $remaining,
             'status' => MDP_Generator::get_status(),
         ));
+    }
+
+    /**
+     * AJAX: Stop generation.
+     */
+    public function ajax_stop_generation()
+    {
+        check_ajax_referer('mdp_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Permission denied');
+        }
+
+        // 1. Clear CRON.
+        wp_clear_scheduled_hook('mdp_cron_batch');
+
+        // 2. Delete queue file.
+        if (file_exists(MDP_CACHE_DIR . '_queue.json')) {
+            @unlink(MDP_CACHE_DIR . '_queue.json');
+        }
+
+        // 3. Finalize status.
+        if (file_exists(MDP_CACHE_DIR . '_status.json')) {
+            $status = json_decode(file_get_contents(MDP_CACHE_DIR . '_status.json'), true);
+            $status['finished'] = current_time('mysql');
+            file_put_contents(MDP_CACHE_DIR . '_status.json', wp_json_encode($status));
+        }
+
+        wp_send_json_success(array('message' => 'Generation stopped.'));
     }
 
     /**

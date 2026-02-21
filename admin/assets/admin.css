@@ -71,15 +71,42 @@
     align-items: center;
 }
 
+.mdp-actions .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: auto;
+    padding: 4px 12px;
+}
+
+.mdp-actions .button-hero {
+    padding: 10px 24px;
+    font-size: 16px;
+    line-height: 1;
+}
+
 .mdp-actions .button .dashicons {
-    vertical-align: middle;
-    margin-right: 4px;
-    line-height: 1.4;
+    width: auto;
+    height: auto;
+    line-height: inherit;
+    font-size: 20px;
+    margin: 0;
 }
 
 .mdp-actions .button-hero .dashicons {
     font-size: 24px;
-    line-height: 1.6;
+}
+
+.button-stop {
+    border-color: #d63638 !important;
+    color: #d63638 !important;
+}
+
+.button-stop:hover {
+    background: #fcf0f1 !important;
+    border-color: #d63638 !important;
+    color: #b32d2e !important;
 }
 
 
@@ -159,6 +186,7 @@
     from {
         transform: rotate(0deg);
     }
+
     to {
         transform: rotate(360deg);
     }

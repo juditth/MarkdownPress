@@ -3,7 +3,7 @@ Contributors: Jitka Klingenbergová
 Tags: markdown, ai, llm, cache, content
 Requires at least: 5.5
 Tested up to: 6.7
-Stable tag: 1.2.1
+Stable tag: 1.2.2
 Requires PHP: 7.4
 License: GPLv2 or later
 
@@ -80,6 +80,10 @@ It's an emerging standard (llmstxt.org) for describing your website to AI tools 
 No. Generation happens in the background via WP Cron. Serving cached markdown files is faster than normal page rendering because it reads a static file.
 
 == Changelog ==
+
+= 1.2.2 =
+* Added "Stop Generation" button to halt active processing.
+* Fixed button icon alignment in the admin interface.
 
 = 1.2.1 =
 * Added help text explaining how to serve Markdown via HTTP `Accept` header.
