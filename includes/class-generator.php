@@ -116,35 +116,36 @@ class MDP_Generator
             }
 
             $status['processed']++;
+            $label = '';
+            if (isset($item['url'])) {
+                $label = $item['url'];
+            } else {
+                switch ($item['type']) {
+                    case 'post':
+                        $label = get_permalink($item['id']);
+                        break;
+                    case 'term':
+                        $label = get_term_link($item['id'], $item['taxonomy']);
+                        if (is_wp_error($label))
+                            $label = "ID: " . $item['id'];
+                        break;
+                    case 'author':
+                        $label = get_author_posts_url($item['id']);
+                        break;
+                    case 'homepage':
+                        $label = home_url('/');
+                        break;
+                    default:
+                        $label = "ID: " . ($item['id'] ?? 'unknown');
+                }
+            }
+
             if (!$success) {
                 $status['errors']++;
-
-                $label = '';
-                if (isset($item['url'])) {
-                    $label = $item['url'];
-                } else {
-                    switch ($item['type']) {
-                        case 'post':
-                            $label = get_permalink($item['id']);
-                            break;
-                        case 'term':
-                            $label = get_term_link($item['id'], $item['taxonomy']);
-                            if (is_wp_error($label))
-                                $label = "ID: " . $item['id'];
-                            break;
-                        case 'author':
-                            $label = get_author_posts_url($item['id']);
-                            break;
-                        case 'homepage':
-                            $label = home_url('/');
-                            break;
-                        default:
-                            $label = "ID: " . ($item['id'] ?? 'unknown');
-                    }
-                }
-
                 $reason = $converter->get_last_error() ?: "Empty content or processing failure";
-                $this->log_error("Failed to process: [{$item['type']}] {$label} - Reason: {$reason}");
+                $this->log_entry("FAILED: [{$item['type']}] {$label} - Reason: {$reason}");
+            } else {
+                $this->log_entry("OK: [{$item['type']}] {$label}");
             }
         }
 
@@ -510,9 +511,9 @@ class MDP_Generator
     }
 
     /**
-     * Log an error message to a file.
+     * Log a message to the plugin log file.
      */
-    public function log_error($message)
+    public function log_entry($message)
     {
         $log_file = self::get_error_log_file();
         $timestamp = current_time('mysql');
