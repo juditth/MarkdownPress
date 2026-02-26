@@ -218,6 +218,30 @@ add_action('delete_post', function ($post_id) {
 // This must run early, but after most core functions are available.
 add_action('init', array('MDP_Server', 'init'), 1);
 
+/**
+ * Add "View Markdown" link to Admin Bar.
+ */
+add_action('admin_bar_menu', function ($wp_admin_bar) {
+    if (!current_user_can('manage_options') || is_admin()) {
+        return;
+    }
+
+    $options = mdp_get_options();
+    if (!$options['enabled']) {
+        return;
+    }
+
+    $wp_admin_bar->add_node(array(
+        'id' => 'mdp-show-markdown',
+        'title' => '<span class="ab-icon dashicons dashicons-media-text" style="top:2px;"></span> View Markdown',
+        'href' => add_query_arg('format', 'markdown'),
+        'meta' => array(
+            'target' => '_blank',
+            'title' => 'View the Markdown version of this page',
+        ),
+    ));
+}, 100);
+
 /* ───────────────────────────── Admin ───────────────────────────── */
 
 if (is_admin()) {
