@@ -134,11 +134,66 @@
         $('#mdp-progress-text').text(status.processed + ' / ' + status.total + ' pages (' + pct + '%)');
         $('#mdp-status-text').text('Processing...');
         $('#mdp-status-detail').text(status.processed + ' / ' + status.total);
+
+        // Refresh logs during processing if there are errors.
+        if (status.errors > 0) {
+            loadLogs(true);
+        }
     }
+
+    // --- Logs functionality ---
+
+    function loadLogs(autoScroll) {
+        var $container = $('#mdp-logs-container');
+        if (!$container.length) return;
+
+        $.post(mdpAdmin.ajaxUrl, {
+            action: 'mdp_get_logs',
+            nonce: mdpAdmin.nonce,
+        }, function (response) {
+            if (response.success) {
+                if (!response.data.logs) {
+                    $container.html('<div class="mdp-logs-empty">No errors logged yet. Good job!</div>');
+                } else {
+                    $container.text(response.data.logs);
+                    if (autoScroll) {
+                        $container.scrollTop($container[0].scrollHeight);
+                    }
+                }
+            }
+        });
+    }
+
+    $('#mdp-refresh-logs').on('click', function (e) {
+        e.preventDefault();
+        var $btn = $(this);
+        $btn.find('.dashicons').addClass('mdp-spin');
+        loadLogs(true);
+        setTimeout(function () {
+            $btn.find('.dashicons').removeClass('mdp-spin');
+        }, 800);
+    });
+
+    $('#mdp-clear-logs').on('click', function (e) {
+        e.preventDefault();
+        if (!confirm('Clear all processing logs?')) return;
+
+        $.post(mdpAdmin.ajaxUrl, {
+            action: 'mdp_clear_logs',
+            nonce: mdpAdmin.nonce,
+        }, function (response) {
+            if (response.success) {
+                loadLogs();
+            }
+        });
+    });
 
     // If already processing on page load, start polling.
     if ($('#mdp-status-text').text().trim() === 'Processing...') {
         startPolling();
     }
+
+    // Initial log load.
+    loadLogs(true);
 
 })(jQuery);

@@ -100,17 +100,27 @@ class MDP_Server
             $post_id = url_to_postid($full_url);
 
             if ($post_id) {
+                // Ensure MDP_Converter is initialized with necessary includes if needed (though already done in markdownpress.php)
                 $converter = new MDP_Converter();
                 if ($converter->convert_post($post_id)) {
-                    // Re-check file after generation.
+                    // Re-calculate file path using the same logic as converter to be 100% sure
+                    $permalink = get_permalink($post_id);
+                    $file = $converter->url_to_cache_path($permalink);
+
                     if (file_exists($file)) {
                         self::send_markdown_response($file);
                     }
                 }
             }
 
-            // No cached version available and couldn't generate — let WP handle it normally.
-            return;
+            // No cached version available and couldn't generate.
+            // Since the user EXPLICITLY asked for markdown (Accept header or ?format=markdown),
+            // and we cannot provide it, we should probably return a 404 or a message, 
+            // instead of falling through to HTML which is confusing.
+            status_header(404);
+            header('Content-Type: text/plain; charset=UTF-8');
+            echo "Error: Markdown version not available for this URL.";
+            exit;
         }
 
         // Serve the markdown file.

@@ -292,40 +292,29 @@ class MDP_Generator
             return $converter->convert_homepage();
         }
 
-        // For other URLs (archives, etc.), use HTTP fetch.
-        $response = wp_remote_get($url, array(
-            'timeout' => 30,
-            'user-agent' => 'markdownpress/1.0',
-            'headers' => array('Accept' => 'text/html'),
-        ));
-
-        if (is_wp_error($response)) {
+        // For other URLs (archives, etc.), use refined HTTP fetch from converter.
+        $html = $converter->fetch_content_via_http($url);
+        if (empty($html)) {
+            // Error already set in converter during fetch_content_via_http.
             return false;
-        }
-
-        $body = wp_remote_retrieve_body($response);
-        if (empty($body)) {
-            return false;
-        }
-
-        // Extract content.
-        $html = $body;
-        if (preg_match('/<main[^>]*>(.*?)<\/main>/si', $body, $m)) {
-            $html = $m[1];
-        } elseif (preg_match('/<article[^>]*>(.*?)<\/article>/si', $body, $m)) {
-            $html = $m[1];
         }
 
         $markdown = MDP_Html_To_Markdown::convert($html);
+        if (empty(trim($markdown))) {
+            $converter->log_error("Markdown conversion resulted in empty content for URL: {$url}");
+            return false;
+        }
 
         $options = mdp_get_options();
         $fm = '';
         if ($options['frontmatter']) {
-            // Extract title from HTML.
+            // Extract title from HTML more robustly.
             $title = '';
-            if (preg_match('/<title[^>]*>(.*?)<\/title>/si', $body, $m)) {
-                $title = html_entity_decode($m[1], ENT_QUOTES, 'UTF-8');
-            }
+            // Get original body for title extraction (since $html is already extracted main content).
+            // Actually, we can fetch it again or just use simple title regex on the already fetched body if we had it.
+            // Let's settle for a simpler approach: if it's a sitemap URL and not a post, we use the URL slug as title fallback.
+            $title = ucwords(str_replace('-', ' ', basename(trim($url, '/'))));
+
             $fm = "---\n";
             $fm .= 'title: "' . str_replace('"', '\\"', $title) . '"' . "\n";
             $fm .= 'url: "' . $url . '"' . "\n";
@@ -339,7 +328,11 @@ class MDP_Generator
             wp_mkdir_p($dir);
         }
 
-        return (bool) file_put_contents($file_path, $fm . $markdown);
+        $result = (bool) file_put_contents($file_path, $fm . $markdown);
+        if (!$result) {
+            $converter->log_error("Failed to write markdown file to: {$file_path}");
+        }
+        return $result;
     }
 
     /**

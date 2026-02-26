@@ -196,3 +196,61 @@
     animation: mdp-spin 1.5s linear infinite;
     display: inline-block;
 }
+
+/* ─── Logs ─── */
+
+.mdp-logs-section {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.mdp-logs-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.mdp-logs-container {
+    background: #1d2327;
+    color: #c3c4c7;
+    padding: 16px;
+    border-radius: 6px;
+    height: 300px;
+    overflow-y: auto;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    border: 1px solid #3c434a;
+}
+
+.mdp-logs-container::-webkit-scrollbar {
+    width: 10px;
+}
+
+.mdp-logs-container::-webkit-scrollbar-track {
+    background: #1d2327;
+}
+
+.mdp-logs-container::-webkit-scrollbar-thumb {
+    background: #3c434a;
+    border-radius: 5px;
+}
+
+.mdp-logs-empty {
+    color: #8c8f94;
+    font-style: italic;
+    text-align: center;
+    padding: 60px 0;
+}
+
+.mdp-logs-loading {
+    color: #8c8f94;
+    text-align: center;
+    padding: 60px 0;
+}

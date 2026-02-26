@@ -361,7 +361,7 @@ class MDP_Converter
     /**
      * Fetch page content via HTTP and extract the main content area.
      */
-    private function fetch_content_via_http($url)
+    public function fetch_content_via_http($url)
     {
         $response = wp_remote_get($url, array(
             'timeout' => 30,
@@ -372,27 +372,39 @@ class MDP_Converter
         ));
 
         if (is_wp_error($response)) {
+            $this->last_error = "HTTP Fetch failed: " . $response->get_error_message();
             return '';
         }
 
         $body = wp_remote_retrieve_body($response);
         if (empty($body)) {
+            $this->last_error = "HTTP Fetch returned empty body.";
             return '';
         }
 
-        // Try to extract main content area.
-        // Look for common content selectors across various themes and builders.
+        return $this->extract_main_content($body);
+    }
+
+    /**
+     * Extract the main content area from full HTML body.
+     * Uses common selectors for various builders and themes.
+     */
+    public function extract_main_content($body)
+    {
         $selectors = array(
             '<div[^>]*id="bricks-content"[^>]*>(.*?)<\/div>',
             '<div[^>]*class="[^"]*elementor[^"]*"[^>]*>(.*?)<\/div>',
             '<div[^>]*class="[^"]*fl-builder-content[^"]*"[^>]*>(.*?)<\/div>',
             '<div[^>]*class="[^"]*et_builder_inner_content[^"]*"[^>]*>(.*?)<\/div>',
+            '<div[^>]*class="[^"]*product[^"]*"[^>]*>(.*?)<\/div>', // WooCommerce
+            '<div[^>]*id="product-[^"]*"[^>]*>(.*?)<\/div>', // WooCommerce
             '<main[^>]*>(.*?)<\/main>',
             '<article[^>]*>(.*?)<\/article>',
             '<div[^>]*class="[^"]*entry-content[^"]*"[^>]*>(.*?)<\/div>',
             '<div[^>]*class="[^"]*post-content[^"]*"[^>]*>(.*?)<\/div>',
             '<div[^>]*class="[^"]*page-content[^"]*"[^>]*>(.*?)<\/div>',
             '<div[^>]*id="content"[^>]*>(.*?)<\/div>',
+            '<div[^>]*id="main"[^>]*>(.*?)<\/div>',
         );
 
         foreach ($selectors as $selector) {

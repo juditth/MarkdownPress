@@ -3,7 +3,7 @@
  * Plugin Name: MarkdownPress
  * Plugin URI:  https://github.com/juditth/wordpress-to-markdown
  * Description: Creates a markdown mirror of your WordPress site. Serves content via Accept: text/markdown header, generates llms.txt for AI crawlers.
- * Version:     1.2.5
+ * Version:     1.2.7
  * Author:      Jitka Klingenbergová
  * Author URI:  https://vyladeny-web.cz/
  * License:     GPLv2 or later
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 
 /* ───────────────────────────── Constants ───────────────────────────── */
 
-define('MDP_VERSION', '1.2.5');
+define('MDP_VERSION', '1.2.7');
 define('MDP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MDP_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('MDP_PLUGIN_FILE', __FILE__);
@@ -216,7 +216,7 @@ add_action('delete_post', function ($post_id) {
 /* ───────────────────────────── Markdown serving ───────────────────────────── */
 
 // This must run early, but after most core functions are available.
-add_action('plugins_loaded', array('MDP_Server', 'init'), 10);
+add_action('init', array('MDP_Server', 'init'), 1);
 
 /* ───────────────────────────── Admin ───────────────────────────── */
 

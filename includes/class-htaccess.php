@@ -43,13 +43,18 @@ class MDP_Htaccess
             return;
         }
 
+        $htaccess_file = self::get_htaccess_path();
+        if (!file_exists($htaccess_file)) {
+            return;
+        }
+
         global $wp_filesystem;
         if (empty($wp_filesystem)) {
             require_once ABSPATH . 'wp-admin/includes/file.php';
             WP_Filesystem();
         }
 
-        if (!$wp_filesystem || !$wp_filesystem->exists($htaccess_file) || !$wp_filesystem->is_writable($htaccess_file)) {
+        if (!$wp_filesystem || !$wp_filesystem->is_writable($htaccess_file)) {
             return;
         }
 

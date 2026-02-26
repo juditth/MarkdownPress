@@ -24,6 +24,8 @@ class MDP_Admin
         add_action('wp_ajax_mdp_stop_generation', array($this, 'ajax_stop_generation'));
         add_action('wp_ajax_mdp_clear_cache', array($this, 'ajax_clear_cache'));
         add_action('wp_ajax_mdp_get_status', array($this, 'ajax_get_status'));
+        add_action('wp_ajax_mdp_get_logs', array($this, 'ajax_get_logs'));
+        add_action('wp_ajax_mdp_clear_logs', array($this, 'ajax_clear_logs'));
 
         // Handle ZIP download.
         add_action('admin_init', array($this, 'handle_zip_download'));
@@ -212,7 +214,6 @@ class MDP_Admin
                     </a>
                 <?php endif; ?>
             </div>
-
             <!-- Progress bar -->
             <div id="mdp-progress" class="mdp-progress" style="<?php echo $is_processing ? '' : 'display:none;'; ?>">
                 <div class="mdp-progress-bar">
@@ -225,6 +226,28 @@ class MDP_Admin
                         <?php echo esc_html($status['processed']); ?> /
                         <?php echo esc_html($status['total']); ?>             <?php esc_html_e('pages', 'markdownpress'); ?>
                     <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Error Logs -->
+            <div id="mdp-logs-section" class="mdp-logs-section" style="margin-top: 24px;">
+                <div class="mdp-logs-header">
+                    <h2 style="margin:0; padding:0; border:0; font-size: 18px;">
+                        <span class="dashicons dashicons-warning" style="margin-right: 8px;"></span>
+                        <?php esc_html_e('Processing Errors & Logs', 'markdownpress'); ?>
+                    </h2>
+                    <div>
+                        <button type="button" id="mdp-refresh-logs" class="button button-secondary button-small">
+                            <span class="dashicons dashicons-update"></span>
+                            <?php esc_html_e('Refresh', 'markdownpress'); ?>
+                        </button>
+                        <button type="button" id="mdp-clear-logs" class="button button-link-delete button-small" style="margin-left: 8px;">
+                            <?php esc_html_e('Clear logs', 'markdownpress'); ?>
+                        </button>
+                    </div>
+                </div>
+                <div id="mdp-logs-container" class="mdp-logs-container">
+                    <div class="mdp-logs-loading"><?php esc_html_e('Loading logs...', 'markdownpress'); ?></div>
                 </div>
             </div>
 
@@ -310,6 +333,7 @@ class MDP_Admin
                                         sites.<br>
                                         <strong>HTTP Fetch (100% Accurate)</strong> — Fetches the page exactly like a browser.
                                         Slowest method, but bypasses all builder limitations to get the true final content.
+                                        <strong>Most reliable method for sites using ACF fields, WooCommerce, or custom templates (CPTs).</strong>
                                     </p>
                                 </td>
                             </tr>
@@ -549,6 +573,45 @@ class MDP_Admin
             'files' => $this->count_cache_files(),
             'size' => size_format($this->get_cache_size()),
         ));
+    }
+
+    /**
+     * AJAX: Get error logs.
+     */
+    public function ajax_get_logs()
+    {
+        check_ajax_referer('mdp_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Permission denied');
+        }
+
+        $log_file = MDP_Generator::get_error_log_file();
+        if (!file_exists($log_file)) {
+            wp_send_json_success(array('logs' => ''));
+            return;
+        }
+
+        // Return last 1MB of logs at most.
+        $logs = file_get_contents($log_file);
+        wp_send_json_success(array('logs' => $logs));
+    }
+
+    /**
+     * AJAX: Clear error logs.
+     */
+    public function ajax_clear_logs()
+    {
+        check_ajax_referer('mdp_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Permission denied');
+        }
+
+        $log_file = MDP_Generator::get_error_log_file();
+        if (file_exists($log_file)) {
+            wp_delete_file($log_file);
+        }
+
+        wp_send_json_success(array('message' => 'Logs cleared.'));
     }
 
     /* ───────────────────────────── Helpers ───────────────────────────── */
