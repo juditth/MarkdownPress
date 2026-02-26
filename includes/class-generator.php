@@ -119,9 +119,31 @@ class MDP_Generator
             if (!$success) {
                 $status['errors']++;
 
-                $label = $item['url'] ?? "ID: " . ($item['id'] ?? 'unknown');
-                $reason = $converter->get_last_error() ?: "Empty content or processing failure";
+                $label = '';
+                if (isset($item['url'])) {
+                    $label = $item['url'];
+                } else {
+                    switch ($item['type']) {
+                        case 'post':
+                            $label = get_permalink($item['id']);
+                            break;
+                        case 'term':
+                            $label = get_term_link($item['id'], $item['taxonomy']);
+                            if (is_wp_error($label))
+                                $label = "ID: " . $item['id'];
+                            break;
+                        case 'author':
+                            $label = get_author_posts_url($item['id']);
+                            break;
+                        case 'homepage':
+                            $label = home_url('/');
+                            break;
+                        default:
+                            $label = "ID: " . ($item['id'] ?? 'unknown');
+                    }
+                }
 
+                $reason = $converter->get_last_error() ?: "Empty content or processing failure";
                 $this->log_error("Failed to process: [{$item['type']}] {$label} - Reason: {$reason}");
             }
         }

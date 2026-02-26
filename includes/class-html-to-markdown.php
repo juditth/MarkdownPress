@@ -199,7 +199,6 @@ class MDP_Html_To_Markdown
                 case 'section':
                 case 'article':
                 case 'main':
-                case 'aside':
                 case 'span':
                 case 'figure':
                 case 'figcaption':
@@ -219,8 +218,6 @@ class MDP_Html_To_Markdown
                 case 'label':
                 case 'legend':
                 case 'fieldset':
-                case 'header':
-                case 'footer':
                 case 'hgroup':
                     $output .= self::process_node($child);
                     break;
@@ -245,6 +242,10 @@ class MDP_Html_To_Markdown
                 case 'map':
                 case 'object':
                 case 'embed':
+                case 'nav':
+                case 'header':
+                case 'footer':
+                case 'aside':
                     break;
 
                 // ─── Everything else — process children ───

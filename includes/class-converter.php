@@ -104,15 +104,18 @@ class MDP_Converter
     {
         $term = get_term($term_id, $taxonomy);
         if (!$term || is_wp_error($term)) {
+            $this->last_error = "Term not found or invalid (ID: {$term_id}, Tax: {$taxonomy}).";
             return false;
         }
 
         $term_link = get_term_link($term);
         if (is_wp_error($term_link)) {
+            $this->last_error = "Could not get permalink for term '{$term->name}'.";
             return false;
         }
 
         if ($this->is_excluded($term_link)) {
+            $this->last_error = "Term URL is excluded by rules.";
             return false;
         }
 
@@ -378,44 +381,40 @@ class MDP_Converter
 
         $body = wp_remote_retrieve_body($response);
         if (empty($body)) {
-            $this->last_error = "HTTP Fetch returned empty body.";
+            $this->last_error = "HTTP Fetch returned empty body (Status: " . wp_remote_retrieve_response_code($response) . ").";
             return '';
         }
 
-        return $this->extract_main_content($body);
+        $extracted = $this->extract_main_content($body);
+        if (empty(trim(wp_strip_all_tags($extracted)))) {
+            $this->last_error = "HTTP Fetch succeeded, but content extraction (<body>) resulted in empty text.";
+            return '';
+        }
+
+        return $extracted;
     }
 
     /**
-     * Extract the main content area from full HTML body.
-     * Uses common selectors for various builders and themes.
+     * Universal content extraction: returns the content between <body> tags.
+     * Filtering of unwanted elements (nav, footer, etc.) is handled by the converter.
      */
     public function extract_main_content($body)
     {
-        $selectors = array(
-            '<div[^>]*id="bricks-content"[^>]*>(.*?)<\/div>',
-            '<div[^>]*class="[^"]*elementor[^"]*"[^>]*>(.*?)<\/div>',
-            '<div[^>]*class="[^"]*fl-builder-content[^"]*"[^>]*>(.*?)<\/div>',
-            '<div[^>]*class="[^"]*et_builder_inner_content[^"]*"[^>]*>(.*?)<\/div>',
-            '<div[^>]*class="[^"]*product[^"]*"[^>]*>(.*?)<\/div>', // WooCommerce
-            '<div[^>]*id="product-[^"]*"[^>]*>(.*?)<\/div>', // WooCommerce
-            '<main[^>]*>(.*?)<\/main>',
-            '<article[^>]*>(.*?)<\/article>',
-            '<div[^>]*class="[^"]*entry-content[^"]*"[^>]*>(.*?)<\/div>',
-            '<div[^>]*class="[^"]*post-content[^"]*"[^>]*>(.*?)<\/div>',
-            '<div[^>]*class="[^"]*page-content[^"]*"[^>]*>(.*?)<\/div>',
-            '<div[^>]*id="content"[^>]*>(.*?)<\/div>',
-            '<div[^>]*id="main"[^>]*>(.*?)<\/div>',
-        );
-
-        foreach ($selectors as $selector) {
-            if (preg_match('/' . $selector . '/si', $body, $matches)) {
-                return $matches[1];
-            }
+        if (empty($body)) {
+            return '';
         }
 
-        // If nothing found, return body between <body> tags.
-        if (preg_match('/<body[^>]*>(.*?)<\/body>/si', $body, $matches)) {
-            return $matches[1];
+        $doc = new DOMDocument();
+        // Handle UTF-8 properly and suppress warnings for invalid HTML.
+        @$doc->loadHTML('<?xml encoding="UTF-8">' . $body, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+
+        $body_nodes = $doc->getElementsByTagName('body');
+        if ($body_nodes->length > 0) {
+            $inner = '';
+            foreach ($body_nodes->item(0)->childNodes as $child) {
+                $inner .= $doc->saveHTML($child);
+            }
+            return $inner;
         }
 
         return $body;
