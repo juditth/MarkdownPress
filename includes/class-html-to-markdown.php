@@ -65,7 +65,7 @@ class MDP_Html_To_Markdown
         foreach ($node->childNodes as $child) {
             if ($child instanceof DOMText) {
                 $text = $child->textContent;
-                // Collapse whitespace but preserve intentional newlines.
+                // Collapse spaces but keep existing single newlines.
                 $text = preg_replace('/[ \t]+/', ' ', $text);
                 $output .= $text;
                 continue;
@@ -88,25 +88,27 @@ class MDP_Html_To_Markdown
                     $level = intval(substr($tag, 1));
                     $prefix = str_repeat('#', $level);
                     $inner = trim(self::process_node($child));
-                    $output .= "\n\n{$prefix} {$inner}\n\n";
+                    if ($inner !== '') {
+                        $output = self::ensure_block_prefix($output) . "{$prefix} {$inner}\n\n";
+                    }
                     break;
 
                 // ─── Paragraphs ───
                 case 'p':
                     $inner = trim(self::process_node($child));
                     if ($inner !== '') {
-                        $output .= "\n\n{$inner}\n\n";
+                        $output = self::ensure_block_prefix($output) . "{$inner}\n\n";
                     }
                     break;
 
                 // ─── Line break ───
                 case 'br':
-                    $output .= "  \n";
+                    $output = rtrim($output) . "  \n";
                     break;
 
                 // ─── Horizontal rule ───
                 case 'hr':
-                    $output .= "\n\n---\n\n";
+                    $output = rtrim($output) . "\n\n---\n\n";
                     break;
 
                 // ─── Bold ───
@@ -143,28 +145,36 @@ class MDP_Html_To_Markdown
                         if (strpos($src, 'http') !== 0 && strpos($src, '//') !== 0) {
                             $src = home_url($src);
                         }
-                        $output .= "![{$alt}]({$src})";
+                        $output = self::ensure_block_prefix($output) . "![{$alt}]({$src})\n\n";
                     }
                     break;
 
                 // ─── Unordered list ───
                 case 'ul':
-                    $output .= "\n" . self::process_list($child, 'ul', 0) . "\n";
+                    $list_content = trim(self::process_list($child, 'ul', 0));
+                    if ($list_content !== '') {
+                        $output = rtrim($output) . "\n\n" . $list_content . "\n\n";
+                    }
                     break;
 
                 // ─── Ordered list ───
                 case 'ol':
-                    $output .= "\n" . self::process_list($child, 'ol', 0) . "\n";
+                    $list_content = trim(self::process_list($child, 'ol', 0));
+                    if ($list_content !== '') {
+                        $output = rtrim($output) . "\n\n" . $list_content . "\n\n";
+                    }
                     break;
 
                 // ─── Blockquote ───
                 case 'blockquote':
                     $inner = trim(self::process_node($child));
-                    $lines = explode("\n", $inner);
-                    $quoted = array_map(function ($l) {
-                        return '> ' . $l;
-                    }, $lines);
-                    $output .= "\n\n" . implode("\n", $quoted) . "\n\n";
+                    if ($inner !== '') {
+                        $lines = explode("\n", $inner);
+                        $quoted = array_map(function ($l) {
+                            return '> ' . $l;
+                        }, $lines);
+                        $output = rtrim($output) . "\n\n" . implode("\n", $quoted) . "\n\n";
+                    }
                     break;
 
                 // ─── Preformatted / code ───
@@ -180,7 +190,7 @@ class MDP_Html_To_Markdown
                         }
                         $code = $code_el->textContent;
                     }
-                    $output .= "\n\n```{$lang}\n{$code}\n```\n\n";
+                    $output = rtrim($output) . "\n\n```{$lang}\n{$code}\n```\n\n";
                     break;
 
                 case 'code':
@@ -191,19 +201,33 @@ class MDP_Html_To_Markdown
 
                 // ─── Table ───
                 case 'table':
-                    $output .= "\n\n" . self::process_table($child) . "\n\n";
+                    $table_md = self::process_table($child);
+                    if ($table_md !== '') {
+                        $output = rtrim($output) . "\n\n" . $table_md . "\n\n";
+                    }
                     break;
 
-                // ─── Divs, sections, articles — pass through ───
+                // ─── Block containers ───
                 case 'div':
                 case 'section':
                 case 'article':
                 case 'main':
-                case 'span':
                 case 'figure':
                 case 'figcaption':
                 case 'details':
                 case 'summary':
+                case 'address':
+                case 'dl':
+                case 'fieldset':
+                case 'hgroup':
+                    $inner = trim(self::process_node($child));
+                    if ($inner !== '') {
+                        $output = self::ensure_block_prefix($output) . $inner . "\n\n";
+                    }
+                    break;
+
+                // ─── Inline pass-through ───
+                case 'span':
                 case 'mark':
                 case 'small':
                 case 'sup':
@@ -211,19 +235,12 @@ class MDP_Html_To_Markdown
                 case 'abbr':
                 case 'cite':
                 case 'time':
-                case 'address':
-                case 'dl':
                 case 'dt':
                 case 'dd':
                 case 'label':
                 case 'legend':
-                case 'fieldset':
-                case 'hgroup':
                     $output .= self::process_node($child);
                     break;
-
-                // ─── Definition list items ───
-                // Already handled above via pass-through.
 
                 // ─── Skip known unwanted ───
                 case 'script':
@@ -394,6 +411,18 @@ class MDP_Html_To_Markdown
         // Remove HTML comments.
         $html = preg_replace('/<!--.*?-->/s', '', $html);
         return $html;
+    }
+
+    /**
+     * Ensure we have two newlines before a block element.
+     */
+    private static function ensure_block_prefix($output)
+    {
+        if (empty($output)) {
+            return '';
+        }
+        $output = rtrim($output);
+        return $output . "\n\n";
     }
 
     /**
