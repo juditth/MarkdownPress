@@ -2,13 +2,13 @@
  * MarkdownPress — Admin JavaScript
  * Handles generate/clear AJAX actions and status polling.
  */
-(function ($) {
+(function($) {
     'use strict';
 
     var polling = null;
 
     // Generate Now button.
-    $('#mdp-generate-now').on('click', function (e) {
+    $('#mdp-generate-now').on('click', function(e) {
         e.preventDefault();
         var $btn = $(this);
 
@@ -18,7 +18,7 @@
         $.post(mdpAdmin.ajaxUrl, {
             action: 'mdp_generate_now',
             nonce: mdpAdmin.nonce,
-        }, function (response) {
+        }, function(response) {
             if (response.success) {
                 var data = response.data;
                 $btn.text('Generating...');
@@ -30,14 +30,14 @@
                 alert('Error: ' + (response.data || 'Unknown error'));
                 $btn.prop('disabled', false).html('<span class="dashicons dashicons-controls-play"></span> Generate Now');
             }
-        }).fail(function () {
+        }).fail(function() {
             alert('Request failed. Please try again.');
             $btn.prop('disabled', false).html('<span class="dashicons dashicons-controls-play"></span> Generate Now');
         });
     });
 
     // Stop Generation button.
-    $('#mdp-stop-generation').on('click', function (e) {
+    $('#mdp-stop-generation').on('click', function(e) {
         e.preventDefault();
         var $btn = $(this);
 
@@ -48,7 +48,7 @@
         $.post(mdpAdmin.ajaxUrl, {
             action: 'mdp_stop_generation',
             nonce: mdpAdmin.nonce,
-        }, function (response) {
+        }, function(response) {
             if (response.success) {
                 stopPolling();
                 location.reload();
@@ -60,7 +60,7 @@
     });
 
     // Clear Cache button.
-    $('#mdp-clear-cache').on('click', function (e) {
+    $('#mdp-clear-cache').on('click', function(e) {
         e.preventDefault();
 
         if (!confirm('Delete all cached markdown files? This cannot be undone.')) {
@@ -73,7 +73,7 @@
         $.post(mdpAdmin.ajaxUrl, {
             action: 'mdp_clear_cache',
             nonce: mdpAdmin.nonce,
-        }, function (response) {
+        }, function(response) {
             if (response.success) {
                 location.reload();
             } else {
@@ -87,11 +87,11 @@
     function startPolling() {
         if (polling) return;
 
-        polling = setInterval(function () {
+        polling = setInterval(function() {
             $.post(mdpAdmin.ajaxUrl, {
                 action: 'mdp_get_status',
                 nonce: mdpAdmin.nonce,
-            }, function (response) {
+            }, function(response) {
                 if (!response.success) return;
 
                 var data = response.data;
@@ -110,7 +110,7 @@
                     $('#mdp-status-detail').text(status.processed + ' pages processed' + (status.errors > 0 ? ' (' + status.errors + ' errors)' : ''));
 
                     // Reload after a moment to update all stats.
-                    setTimeout(function () {
+                    setTimeout(function() {
                         location.reload();
                     }, 2000);
                 }
@@ -150,7 +150,7 @@
         $.post(mdpAdmin.ajaxUrl, {
             action: 'mdp_get_logs',
             nonce: mdpAdmin.nonce,
-        }, function (response) {
+        }, function(response) {
             if (response.success) {
                 if (!response.data.logs) {
                     $container.html('<div class="mdp-logs-empty">No errors logged yet. Good job!</div>');
@@ -164,24 +164,24 @@
         });
     }
 
-    $('#mdp-refresh-logs').on('click', function (e) {
+    $('#mdp-refresh-logs').on('click', function(e) {
         e.preventDefault();
         var $btn = $(this);
         $btn.find('.dashicons').addClass('mdp-spin');
         loadLogs(true);
-        setTimeout(function () {
+        setTimeout(function() {
             $btn.find('.dashicons').removeClass('mdp-spin');
         }, 800);
     });
 
-    $('#mdp-clear-logs').on('click', function (e) {
+    $('#mdp-clear-logs').on('click', function(e) {
         e.preventDefault();
         if (!confirm('Clear all processing logs?')) return;
 
         $.post(mdpAdmin.ajaxUrl, {
             action: 'mdp_clear_logs',
             nonce: mdpAdmin.nonce,
-        }, function (response) {
+        }, function(response) {
             if (response.success) {
                 loadLogs();
             }
@@ -195,5 +195,10 @@
 
     // Initial log load.
     loadLogs(true);
+
+    // Refresh logs every 5 seconds.
+    setInterval(function() {
+        loadLogs(true);
+    }, 5000);
 
 })(jQuery);
