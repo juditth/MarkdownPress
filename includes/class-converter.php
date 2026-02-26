@@ -180,11 +180,18 @@ class MDP_Converter
     {
         $user = get_user_by('ID', $user_id);
         if (!$user) {
+            $this->last_error = "User not found (ID: {$user_id}).";
             return false;
         }
 
         $author_url = get_author_posts_url($user_id);
+        if (!$author_url) {
+            $this->last_error = "Could not get author archive URL for ID: {$user_id}.";
+            return false;
+        }
+
         if ($this->is_excluded($author_url)) {
+            $this->last_error = "Author URL is excluded by rules.";
             return false;
         }
 
@@ -240,6 +247,11 @@ class MDP_Converter
     {
         $home_url = home_url('/');
         $options = mdp_get_options();
+
+        if ($this->is_excluded($home_url)) {
+            $this->last_error = "Homepage is excluded by rules.";
+            return false;
+        }
 
         // Check if it's a static page.
         $front_page_id = get_option('page_on_front');

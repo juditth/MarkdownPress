@@ -324,17 +324,22 @@ class MDP_Admin
                                         <option value="http" <?php selected($options['content_method'], 'http'); ?>>HTTP Fetch
                                             (100% Accurate)</option>
                                     </select>
-                                    <p class="description">
-                                        <strong>Combined (Smart Fallback)</strong> — Recommended. Uses WordPress filters first
-                                        for speed, then automatically falls back to HTTP Fetch for page builders like Bricks or
-                                        Elementor if the content appears empty.<br>
-                                        <strong>WordPress Filters (Fast)</strong> — Standard method using
-                                        <code>apply_filters('the_content')</code>. Works well for Gutenberg and classic
-                                        sites.<br>
-                                        <strong>HTTP Fetch (100% Accurate)</strong> — Fetches the page exactly like a browser.
-                                        Slowest method, but bypasses all builder limitations to get the true final content.
-                                        <strong>Most reliable method for sites using ACF fields, WooCommerce, or custom templates (CPTs).</strong>
-                                    </p>
+                                    <div class="description" style="margin-top: 10px; line-height: 1.6;">
+                                        <div style="margin-bottom: 12px;">
+                                            <strong>Combined (Smart Fallback)</strong><br>
+                                            — Recommended. Uses WordPress filters first for speed, then automatically falls back to HTTP Fetch for page builders like Bricks or Elementor if the content appears empty.<br>
+                                            — Best if ACF is NOT present.
+                                        </div>
+                                        <div style="margin-bottom: 12px;">
+                                            <strong>WordPress Filters (Fast)</strong><br>
+                                            — Standard method using <code>apply_filters('the_content')</code>. Works well for Gutenberg and classic sites.
+                                        </div>
+                                        <div>
+                                            <strong>HTTP Fetch (100% Accurate)</strong><br>
+                                            — Fetches the page exactly like a browser. Slowest method, but bypasses all builder limitations to get the true final content.<br>
+                                            — <strong>Most reliable method for sites using ACF fields, WooCommerce, or custom templates (CPTs).</strong>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         </table>
