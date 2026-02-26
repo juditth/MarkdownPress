@@ -72,7 +72,15 @@ Example: `curl -H "Accept: text/markdown" https://your-site.com/about/`
 * Added nonce verification for downloads.
 * Removed duplicate settings link.
 
-= 1.2.4 =
+= 1.2.7 =
+* Enhanced logging: Now records both successful (OK) and failed generations with detailed reasons and URLs.
+* Improved Markdown conversion: Strict block-level separation for better headline rendering.
+* New: Added "View Markdown" link to the WordPress Admin Bar for quick access.
+* Encoding: Explicitly enforced UTF-8 charset in headers and .htaccess to fix special character issues.
+* Admin UI: Added automatic log refreshing every 15 seconds and clearer method descriptions.
+* Optimization: Re-implemented layout filtering to ensure cleaner content extraction.
+
+= 1.2.5 =
 * Forced absolute URLs for all images in Markdown output for better AI compatibility.
 
 = 1.2.3 =
