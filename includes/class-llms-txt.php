@@ -115,7 +115,7 @@ class MDP_Llms_Txt
         $txt .= "1. Adding `?format=markdown` to any URL\n";
         $txt .= "2. Sending `Accept: text/markdown` in the HTTP request headers\n";
 
-        file_put_contents(MDP_CACHE_DIR . 'llms.txt', $txt);
+        file_put_contents(MDP_CACHE_DIR . 'llms.txt', MDP_Html_To_Markdown::normalize_text($txt));
     }
 
     /**
@@ -149,7 +149,7 @@ class MDP_Llms_Txt
                 $txt .= MDP_Html_To_Markdown::convert($content) . "\n\n---\n\n";
             }
 
-            file_put_contents(MDP_CACHE_DIR . 'llms-full.txt', $txt);
+            file_put_contents(MDP_CACHE_DIR . 'llms-full.txt', MDP_Html_To_Markdown::normalize_text($txt));
         }
     }
 }

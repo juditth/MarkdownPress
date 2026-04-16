@@ -79,12 +79,13 @@ class MDP_Htaccess
         $rules = array();
         $rules[] = '<IfModule mod_rewrite.c>';
         $rules[] = 'RewriteEngine On';
+        $rules = array_merge($rules, self::generate_charset_rules());
         $rules[] = '';
 
         // ─── llms.txt and llms-full.txt — always served directly ───
         $rules[] = '# Serve llms.txt directly';
-        $rules[] = 'RewriteRule ^llms\.txt$ /' . $cache_rel . '/llms.txt [L,T=text/plain;charset=UTF-8]';
-        $rules[] = 'RewriteRule ^llms-full\.txt$ /' . $cache_rel . '/llms-full.txt [L,T=text/plain;charset=UTF-8]';
+        $rules[] = 'RewriteRule ^llms\.txt$ /' . $cache_rel . '/llms.txt [L,E=MDP:1,E=MDP_TEXT:1]';
+        $rules[] = 'RewriteRule ^llms-full\.txt$ /' . $cache_rel . '/llms-full.txt [L,E=MDP:1,E=MDP_TEXT:1]';
         $rules[] = '';
 
         // ─── Accept: text/markdown header ───
@@ -94,7 +95,7 @@ class MDP_Htaccess
         $rules[] = 'RewriteCond %{HTTP_ACCEPT} application/markdown [NC]';
         $rules[] = '# Check if cached markdown file exists for this URL';
         $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '%{REQUEST_URI}index.md -f';
-        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1index.md [L,T=text/markdown;charset=UTF-8,E=MDP:1]';
+        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1index.md [L,E=MDP:1,E=MDP_MD:1]';
         $rules[] = '';
 
         // ─── Handle URLs without trailing slash ───
@@ -102,39 +103,33 @@ class MDP_Htaccess
         $rules[] = 'RewriteCond %{HTTP_ACCEPT} text/markdown [NC,OR]';
         $rules[] = 'RewriteCond %{HTTP_ACCEPT} text/x-markdown [NC,OR]';
         $rules[] = 'RewriteCond %{HTTP_ACCEPT} application/markdown [NC]';
-        $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '%{REQUEST_URI}/index.md -f';
-        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1/index.md [L,T=text/markdown;charset=UTF-8,E=MDP:1]';
-        $rules[] = '';
 
-        // ─── ?format=markdown query parameter ───
-        $rules[] = '# Serve markdown when ?format=markdown is in the query string';
-        $rules[] = 'RewriteCond %{QUERY_STRING} (^|&)format=markdown($|&) [NC]';
-        $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '%{REQUEST_URI}index.md -f';
-        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1index.md [L,T=text/markdown;charset=UTF-8,E=MDP:1]';
-        $rules[] = '';
-
-        // ─── ?format=markdown without trailing slash ───
-        $rules[] = 'RewriteCond %{QUERY_STRING} (^|&)format=markdown($|&) [NC]';
         $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '%{REQUEST_URI}/index.md -f';
-        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1/index.md [L,T=text/markdown;charset=UTF-8,E=MDP:1]';
+        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1/index.md [L,E=MDP:1,E=MDP_MD:1]';
         $rules[] = '';
 
         // ─── Homepage special case ───
         $rules[] = '# Homepage';
         $rules[] = 'RewriteCond %{HTTP_ACCEPT} text/markdown [NC,OR]';
         $rules[] = 'RewriteCond %{HTTP_ACCEPT} text/x-markdown [NC,OR]';
-        $rules[] = 'RewriteCond %{HTTP_ACCEPT} application/markdown [NC,OR]';
-        $rules[] = 'RewriteCond %{QUERY_STRING} (^|&)format=markdown($|&) [NC]';
+        $rules[] = 'RewriteCond %{HTTP_ACCEPT} application/markdown [NC]';
         $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '/index.md -f';
-        $rules[] = 'RewriteRule ^$ /' . $cache_rel . '/index.md [L,T=text/markdown;charset=UTF-8,E=MDP:1]';
+        $rules[] = 'RewriteRule ^$ /' . $cache_rel . '/index.md [L,E=MDP:1,E=MDP_MD:1]';
         $rules[] = '';
 
         // ─── Set proper headers for served files ───
         $rules[] = '# Set proper headers when serving markdown';
         $rules[] = '<IfModule mod_headers.c>';
+        $rules[] = '    Header set Content-Type "text/markdown; charset=UTF-8" env=MDP_MD';
+        $rules[] = '    Header set Content-Type "text/markdown; charset=UTF-8" env=REDIRECT_MDP_MD';
+        $rules[] = '    Header set Content-Type "text/plain; charset=UTF-8" env=MDP_TEXT';
+        $rules[] = '    Header set Content-Type "text/plain; charset=UTF-8" env=REDIRECT_MDP_TEXT';
         $rules[] = '    Header set X-Content-Source "markdownpress" env=MDP';
+        $rules[] = '    Header set X-Content-Source "markdownpress" env=REDIRECT_MDP';
         $rules[] = '    Header set X-Robots-Tag "noindex" env=MDP';
+        $rules[] = '    Header set X-Robots-Tag "noindex" env=REDIRECT_MDP';
         $rules[] = '    Header set Cache-Control "public, max-age=3600" env=MDP';
+        $rules[] = '    Header set Cache-Control "public, max-age=3600" env=REDIRECT_MDP';
         $rules[] = '</IfModule>';
 
         $rules[] = '</IfModule>';
@@ -150,6 +145,7 @@ class MDP_Htaccess
         $rules = array();
         $rules[] = '<IfModule mod_rewrite.c>';
         $rules[] = 'RewriteEngine On';
+        $rules = array_merge($rules, self::generate_charset_rules());
         $rules[] = '';
 
         $sites = get_sites(array(
@@ -170,14 +166,34 @@ class MDP_Htaccess
 
         $rules[] = '# Set proper headers when serving markdown';
         $rules[] = '<IfModule mod_headers.c>';
+        $rules[] = '    Header set Content-Type "text/markdown; charset=UTF-8" env=MDP_MD';
+        $rules[] = '    Header set Content-Type "text/markdown; charset=UTF-8" env=REDIRECT_MDP_MD';
+        $rules[] = '    Header set Content-Type "text/plain; charset=UTF-8" env=MDP_TEXT';
+        $rules[] = '    Header set Content-Type "text/plain; charset=UTF-8" env=REDIRECT_MDP_TEXT';
         $rules[] = '    Header set X-Content-Source "markdownpress" env=MDP';
+        $rules[] = '    Header set X-Content-Source "markdownpress" env=REDIRECT_MDP';
         $rules[] = '    Header set X-Robots-Tag "noindex" env=MDP';
+        $rules[] = '    Header set X-Robots-Tag "noindex" env=REDIRECT_MDP';
         $rules[] = '    Header set Cache-Control "public, max-age=3600" env=MDP';
+        $rules[] = '    Header set Cache-Control "public, max-age=3600" env=REDIRECT_MDP';
         $rules[] = '</IfModule>';
 
         $rules[] = '</IfModule>';
 
         return $rules;
+    }
+
+    /**
+     * Make static markdown/plain files advertise UTF-8 even when mod_headers is unavailable.
+     */
+    private static function generate_charset_rules()
+    {
+        return array(
+            '<IfModule mod_mime.c>',
+            '    AddType "text/markdown; charset=UTF-8" .md',
+            '    AddType "text/plain; charset=UTF-8" .txt',
+            '</IfModule>',
+        );
     }
 
     /**
@@ -218,10 +234,10 @@ class MDP_Htaccess
         $rules[] = '# Serve llms.txt directly';
         $rules[] = $host_cond;
         $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '/llms.txt -f';
-        $rules[] = 'RewriteRule ' . $llms_rule . ' /' . $cache_rel . '/llms.txt [L,T=text/plain;charset=UTF-8,E=MDP:1]';
+        $rules[] = 'RewriteRule ' . $llms_rule . ' /' . $cache_rel . '/llms.txt [L,E=MDP:1,E=MDP_TEXT:1]';
         $rules[] = $host_cond;
         $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '/llms-full.txt -f';
-        $rules[] = 'RewriteRule ' . $llms_full_rule . ' /' . $cache_rel . '/llms-full.txt [L,T=text/plain;charset=UTF-8,E=MDP:1]';
+        $rules[] = 'RewriteRule ' . $llms_full_rule . ' /' . $cache_rel . '/llms-full.txt [L,E=MDP:1,E=MDP_TEXT:1]';
         $rules[] = '';
 
         $rules[] = '# Serve markdown when Accept header contains text/markdown';
@@ -230,7 +246,7 @@ class MDP_Htaccess
         $rules[] = 'RewriteCond %{HTTP_ACCEPT} text/x-markdown [NC,OR]';
         $rules[] = 'RewriteCond %{HTTP_ACCEPT} application/markdown [NC]';
         $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '%{REQUEST_URI}index.md -f';
-        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1index.md [L,T=text/markdown;charset=UTF-8,E=MDP:1]';
+        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1index.md [L,E=MDP:1,E=MDP_MD:1]';
         $rules[] = '';
 
         $rules[] = '# Handle URLs without trailing slash';
@@ -239,30 +255,16 @@ class MDP_Htaccess
         $rules[] = 'RewriteCond %{HTTP_ACCEPT} text/x-markdown [NC,OR]';
         $rules[] = 'RewriteCond %{HTTP_ACCEPT} application/markdown [NC]';
         $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '%{REQUEST_URI}/index.md -f';
-        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1/index.md [L,T=text/markdown;charset=UTF-8,E=MDP:1]';
-        $rules[] = '';
-
-        $rules[] = '# Serve markdown when ?format=markdown is in the query string';
-        $rules[] = $host_cond;
-        $rules[] = 'RewriteCond %{QUERY_STRING} (^|&)format=markdown($|&) [NC]';
-        $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '%{REQUEST_URI}index.md -f';
-        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1index.md [L,T=text/markdown;charset=UTF-8,E=MDP:1]';
-        $rules[] = '';
-
-        $rules[] = $host_cond;
-        $rules[] = 'RewriteCond %{QUERY_STRING} (^|&)format=markdown($|&) [NC]';
-        $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '%{REQUEST_URI}/index.md -f';
-        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1/index.md [L,T=text/markdown;charset=UTF-8,E=MDP:1]';
+        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1/index.md [L,E=MDP:1,E=MDP_MD:1]';
         $rules[] = '';
 
         $rules[] = '# Homepage';
         $rules[] = $host_cond;
         $rules[] = 'RewriteCond %{HTTP_ACCEPT} text/markdown [NC,OR]';
         $rules[] = 'RewriteCond %{HTTP_ACCEPT} text/x-markdown [NC,OR]';
-        $rules[] = 'RewriteCond %{HTTP_ACCEPT} application/markdown [NC,OR]';
-        $rules[] = 'RewriteCond %{QUERY_STRING} (^|&)format=markdown($|&) [NC]';
+        $rules[] = 'RewriteCond %{HTTP_ACCEPT} application/markdown [NC]';
         $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '/index.md -f';
-        $rules[] = 'RewriteRule ' . $site['home_rule'] . ' /' . $cache_rel . '/index.md [L,T=text/markdown;charset=UTF-8,E=MDP:1]';
+        $rules[] = 'RewriteRule ' . $site['home_rule'] . ' /' . $cache_rel . '/index.md [L,E=MDP:1,E=MDP_MD:1]';
         $rules[] = '';
 
         return $rules;
@@ -415,27 +417,15 @@ class MDP_Htaccess
         $config .= "location = /llms.txt {\n";
         $config .= "    alias " . $cache_rel . "/llms.txt;\n";
         $config .= "    default_type text/plain;\n";
+        $config .= "    charset utf-8;\n";
         $config .= "}\n\n";
         $config .= "location = /llms-full.txt {\n";
         $config .= "    alias " . $cache_rel . "/llms-full.txt;\n";
         $config .= "    default_type text/plain;\n";
+        $config .= "    charset utf-8;\n";
         $config .= "}\n\n";
-        $config .= "# Serve markdown when Accept header or ?format=markdown\n";
-        $config .= "location / {\n";
-        $config .= "    # Check for ?format=markdown\n";
-        $config .= "    if (\$arg_format = \"markdown\") {\n";
-        $config .= "        set \$mdp_serve 1;\n";
-        $config .= "    }\n\n";
-        $config .= "    # Check Accept header\n";
-        $config .= "    if (\$http_accept ~* \"text/markdown|text/x-markdown|application/markdown\") {\n";
-        $config .= "        set \$mdp_serve 1;\n";
-        $config .= "    }\n\n";
-        $config .= "    # Try to serve cached markdown\n";
-        $config .= "    if (\$mdp_serve = 1) {\n";
-        $config .= "        rewrite ^(.*)/\$ " . $cache_rel . "\$1/index.md break;\n";
-        $config .= "        rewrite ^(.*)\$ " . $cache_rel . "\$1/index.md break;\n";
-        $config .= "    }\n";
-        $config .= "}\n";
+        $config .= "# ?format=markdown and Accept: text/markdown are handled by the PHP fallback.\n";
+        $config .= "# No extra Nginx rewrite rule is required for Markdown pages.\n";
 
         return $config;
     }

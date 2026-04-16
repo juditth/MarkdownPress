@@ -351,7 +351,7 @@ class MDP_Generator
             wp_mkdir_p($dir);
         }
 
-        $result = (bool) file_put_contents($file_path, $fm . $markdown);
+        $result = (bool) file_put_contents($file_path, MDP_Html_To_Markdown::normalize_text($fm . $markdown));
         if (!$result) {
             $converter->log_error("Failed to write markdown file to: {$file_path}");
         }
@@ -380,7 +380,7 @@ class MDP_Generator
             $sitemap_md .= "- [{$title}]({$url}) — `{$rel_path}`\n";
         }
 
-        file_put_contents(MDP_CACHE_DIR . '_sitemap.md', $sitemap_md);
+        file_put_contents(MDP_CACHE_DIR . '_sitemap.md', MDP_Html_To_Markdown::normalize_text($sitemap_md));
 
         // _all.md — full content of all pages concatenated.
         if ($options['generate_all_md']) {
@@ -396,7 +396,7 @@ class MDP_Generator
                 $all_md .= $content . "\n\n---\n\n";
             }
 
-            file_put_contents(MDP_CACHE_DIR . '_all.md', $all_md);
+            file_put_contents(MDP_CACHE_DIR . '_all.md', MDP_Html_To_Markdown::normalize_text($all_md));
         }
     }
 

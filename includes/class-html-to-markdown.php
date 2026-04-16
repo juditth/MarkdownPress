@@ -59,7 +59,77 @@ class MDP_Html_To_Markdown
         $markdown = preg_replace('/\n{3,}/', "\n\n", $markdown);
         $markdown = trim($markdown);
 
-        return $markdown;
+        return self::normalize_text($markdown);
+    }
+
+    /**
+     * Normalize text to UTF-8 and repair common Czech mojibake.
+     */
+    public static function normalize_text($text)
+    {
+        if (!is_string($text) || $text === '') {
+            return $text;
+        }
+
+        if (!self::is_utf8($text)) {
+            if (function_exists('mb_convert_encoding')) {
+                $text = mb_convert_encoding($text, 'UTF-8', 'Windows-1250,ISO-8859-2,ISO-8859-1');
+            } elseif (function_exists('iconv')) {
+                $converted = @iconv('Windows-1250', 'UTF-8//IGNORE', $text);
+                if ($converted) {
+                    $text = $converted;
+                }
+            }
+        }
+
+        return self::repair_mojibake($text);
+    }
+
+    /**
+     * Repair text that was UTF-8 bytes incorrectly interpreted as Windows-1250.
+     */
+    private static function repair_mojibake($text)
+    {
+        if (!preg_match('/[\x{0102}\x{00C4}\x{0139}\x{00C2}][\x{0080}-\x{02FF}]?/u', $text)) {
+            return $text;
+        }
+
+        if (!function_exists('mb_convert_encoding') && !function_exists('iconv')) {
+            return $text;
+        }
+
+        if (function_exists('mb_convert_encoding')) {
+            $candidate = @mb_convert_encoding($text, 'Windows-1250', 'UTF-8');
+        } else {
+            $candidate = @iconv('UTF-8', 'Windows-1250//IGNORE', $text);
+        }
+
+        if (!$candidate || !self::is_utf8($candidate)) {
+            return $text;
+        }
+
+        return (self::mojibake_score($candidate) < self::mojibake_score($text)) ? $candidate : $text;
+    }
+
+    /**
+     * Score text by how many mojibake markers it contains.
+     */
+    private static function mojibake_score($text)
+    {
+        preg_match_all('/(?:[\x{0102}\x{00C4}\x{0139}\x{00C2}].)/u', $text, $matches);
+        return count($matches[0]);
+    }
+
+    /**
+     * Check whether a string is valid UTF-8.
+     */
+    private static function is_utf8($text)
+    {
+        if (function_exists('mb_check_encoding')) {
+            return mb_check_encoding($text, 'UTF-8');
+        }
+
+        return (bool) preg_match('//u', $text);
     }
 
     /**

@@ -6,7 +6,7 @@ MarkdownPress automatically generates Markdown versions of all your WordPress co
 
 ### Plugin Details
 - **Tested up to:** 6.7
-- **Stable tag:** 1.3.0
+- **Stable tag:** 1.3.1
 - **License:** GPLv2 or later
 - **License URI:** https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -52,6 +52,11 @@ You can access the markdown version of any page by either:
 Example: `curl -H "Accept: text/markdown" https://your-site.com/about/`
 
 ## Changelog
+
+= 1.3.1 =
+* Fixed browser encoding by routing ?format=markdown through PHP with explicit UTF-8 headers.
+* Added UTF-8 normalization and Czech mojibake repair before writing generated Markdown files.
+* Hardened repair for HTTP fetch bodies, summary exports, and llms files.
 
 = 1.3.0 =
 * Added separate default cache directories for each site in WordPress multisite.

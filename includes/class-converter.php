@@ -74,7 +74,7 @@ class MDP_Converter
             $frontmatter = $this->build_frontmatter($post);
         }
 
-        $full_content = $frontmatter . $markdown;
+        $full_content = MDP_Html_To_Markdown::normalize_text($frontmatter . $markdown);
 
         // Determine file path from URL.
         $file_path = $this->url_to_cache_path($permalink);
@@ -167,7 +167,7 @@ class MDP_Converter
             wp_mkdir_p($dir);
         }
 
-        return (bool) file_put_contents($file_path, $md);
+        return (bool) file_put_contents($file_path, MDP_Html_To_Markdown::normalize_text($md));
     }
 
     /**
@@ -235,7 +235,7 @@ class MDP_Converter
             wp_mkdir_p($dir);
         }
 
-        return (bool) file_put_contents($file_path, $md);
+        return (bool) file_put_contents($file_path, MDP_Html_To_Markdown::normalize_text($md));
     }
 
     /**
@@ -288,7 +288,7 @@ class MDP_Converter
         }
 
         $file_path = MDP_CACHE_DIR . 'index.md';
-        return (bool) file_put_contents($file_path, $md);
+        return (bool) file_put_contents($file_path, MDP_Html_To_Markdown::normalize_text($md));
     }
 
     /**
@@ -391,7 +391,7 @@ class MDP_Converter
             return '';
         }
 
-        $body = wp_remote_retrieve_body($response);
+        $body = MDP_Html_To_Markdown::normalize_text(wp_remote_retrieve_body($response));
         if (empty($body)) {
             $this->last_error = "HTTP Fetch returned empty body (Status: " . wp_remote_retrieve_response_code($response) . ").";
             return '';
@@ -507,7 +507,7 @@ class MDP_Converter
      */
     private function escape_yaml($str)
     {
-        $str = wp_strip_all_tags($str);
+        $str = MDP_Html_To_Markdown::normalize_text(wp_strip_all_tags($str));
         $str = str_replace(array('"', "\n", "\r"), array('\\"', ' ', ''), $str);
         return trim($str);
     }

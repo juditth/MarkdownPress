@@ -3,7 +3,7 @@ Contributors: juditth
 Tags: markdown, ai, llms, sitemap, bricks, elementor
 Requires at least: 5.7
 Tested up to: 6.7
-Stable tag: 1.3.0
+Stable tag: 1.3.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -33,6 +33,11 @@ MarkdownPress automatically generates Markdown versions of all your WordPress co
 4. Click **Generate Now** to build your first markdown mirror.
 
 == Changelog ==
+
+= 1.3.1 =
+* Fixed browser encoding by routing ?format=markdown through PHP with explicit UTF-8 headers.
+* Added UTF-8 normalization and Czech mojibake repair before writing generated Markdown files.
+* Hardened repair for HTTP fetch bodies, summary exports, and llms files.
 
 = 1.3.0 =
 * Added separate default cache directories for each site in WordPress multisite.

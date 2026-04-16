@@ -256,7 +256,7 @@ class MDP_Server
             wp_mkdir_p($dir);
         }
 
-        return file_put_contents($file, $content) ? $file : '';
+        return file_put_contents($file, MDP_Html_To_Markdown::normalize_text($content)) ? $file : '';
     }
 
     /**
