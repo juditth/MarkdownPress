@@ -3,7 +3,7 @@ Contributors: juditth
 Tags: markdown, ai, llms, sitemap, bricks, elementor
 Requires at least: 5.7
 Tested up to: 6.7
-Stable tag: 1.2.7
+Stable tag: 1.2.8
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -33,6 +33,11 @@ MarkdownPress automatically generates Markdown versions of all your WordPress co
 4. Click **Generate Now** to build your first markdown mirror.
 
 == Changelog ==
+
+= 1.2.8 =
+* Fixed fatal error when on-the-fly markdown generation runs before rewrite globals are available.
+* Fixed on-demand markdown generation for taxonomy archive URLs requested with ?format=markdown.
+* Prevented HTTP fallback from recursively requesting the markdown endpoint.
 
 = 1.2.7 =
 * Added integrated Error Log viewer to the admin dashboard.

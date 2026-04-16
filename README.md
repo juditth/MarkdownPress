@@ -6,7 +6,7 @@ MarkdownPress automatically generates Markdown versions of all your WordPress co
 
 ### Plugin Details
 - **Tested up to:** 6.7
-- **Stable tag:** 1.2.7
+- **Stable tag:** 1.2.8
 - **License:** GPLv2 or later
 - **License URI:** https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -53,6 +53,11 @@ Example: `curl -H "Accept: text/markdown" https://your-site.com/about/`
 
 ## Changelog
 
+= 1.2.8 =
+* Fixed fatal error when on-the-fly markdown generation runs before rewrite globals are available.
+* Fixed on-demand markdown generation for taxonomy archive URLs requested with ?format=markdown.
+* Prevented HTTP fallback from recursively requesting the markdown endpoint.
+
 = 1.2.7 =
 * Added integrated Error Log viewer to the admin dashboard.
 * Added "Refresh" and "Clear logs" actions directly in the UI.
@@ -94,4 +99,3 @@ Example: `curl -H "Accept: text/markdown" https://your-site.com/about/`
 
 = 1.0.0 =
 * Initial release.
-
