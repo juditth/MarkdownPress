@@ -48,6 +48,13 @@ class MDP_Html_To_Markdown
 
         $markdown = self::process_node($root);
 
+        if (self::needs_builder_payload_fallback($markdown)) {
+            $decoded_html = self::decode_builder_payloads($html);
+            if ($decoded_html !== $html) {
+                return self::convert($decoded_html);
+            }
+        }
+
         // Clean up excessive blank lines.
         $markdown = preg_replace('/\n{3,}/', "\n\n", $markdown);
         $markdown = trim($markdown);
@@ -273,6 +280,149 @@ class MDP_Html_To_Markdown
         }
 
         return $output;
+    }
+
+    /**
+     * Decode supported builder payloads that store content as Base64 serialized data.
+     */
+    private static function decode_builder_payloads($html)
+    {
+        $decoded = self::decode_builder_payload($html);
+        if ($decoded !== '') {
+            return $decoded;
+        }
+
+        return preg_replace_callback('/(?<![A-Za-z0-9+\/_\-=])([A-Za-z0-9+\/_\-]{40,}={0,2})(?![A-Za-z0-9+\/_\-=])/', function ($matches) {
+            $decoded_payload = self::decode_builder_payload($matches[1]);
+            return ($decoded_payload !== '') ? $decoded_payload : $matches[0];
+        }, $html);
+    }
+
+    /**
+     * Use builder decoding only when normal HTML conversion produced raw encoded payloads.
+     */
+    private static function needs_builder_payload_fallback($markdown)
+    {
+        $text = trim($markdown);
+        if ($text === '') {
+            return false;
+        }
+
+        return (bool) preg_match('/(?<![A-Za-z0-9+\/_\-=])[A-Za-z0-9+\/_\-]{120,}={0,2}(?![A-Za-z0-9+\/_\-=])/', $text);
+    }
+
+    /**
+     * Decode one Base64 serialized builder payload into HTML/text content.
+     */
+    private static function decode_builder_payload($payload)
+    {
+        $payload = trim($payload);
+        $payload = trim($payload, "\"' \t\n\r\0\x0B");
+
+        if (strlen($payload) < 40 || !preg_match('/^[A-Za-z0-9+\/_\-]+={0,2}$/', $payload)) {
+            return '';
+        }
+
+        $serialized = base64_decode(strtr($payload, '-_', '+/'), true);
+        if ($serialized === false || !self::looks_like_serialized($serialized)) {
+            return '';
+        }
+
+        try {
+            $data = @unserialize($serialized, array('allowed_classes' => false));
+        } catch (Throwable $e) {
+            return '';
+        }
+        if ($data === false || !is_array($data)) {
+            return '';
+        }
+
+        $parts = array();
+        self::extract_builder_content($data, $parts);
+        $parts = array_values(array_unique(array_filter(array_map('trim', $parts))));
+
+        return implode("\n\n", $parts);
+    }
+
+    /**
+     * Check whether decoded Base64 looks like PHP serialized data.
+     */
+    private static function looks_like_serialized($value)
+    {
+        $value = ltrim($value);
+        return (bool) preg_match('/^(a|s|i|d|b|N):/', $value);
+    }
+
+    /**
+     * Pull only human-facing content out of nested builder arrays.
+     */
+    private static function extract_builder_content($value, array &$parts, $key = '')
+    {
+        if (is_array($value)) {
+            foreach ($value as $child_key => $child_value) {
+                self::extract_builder_content($child_value, $parts, is_string($child_key) ? $child_key : '');
+            }
+            return;
+        }
+
+        if (!is_string($value) || $value === '') {
+            return;
+        }
+
+        if (!self::is_builder_content_key($key) || self::is_builder_noise($value)) {
+            return;
+        }
+
+        $parts[] = $value;
+    }
+
+    /**
+     * Builder keys that usually contain visible page copy.
+     */
+    private static function is_builder_content_key($key)
+    {
+        return in_array($key, array(
+            'content',
+            'text',
+            'title',
+            'subtitle',
+            'heading',
+            'description',
+            'caption',
+            'button_text',
+            'link_text',
+            'popup_text',
+            'popup_title',
+            'book_title',
+            'book_author',
+            'name',
+            'company',
+        ), true);
+    }
+
+    /**
+     * Skip styling, URLs, SVG/icon markup, and short configuration values.
+     */
+    private static function is_builder_noise($value)
+    {
+        $trimmed = trim($value);
+        if ($trimmed === '' || strlen($trimmed) < 3) {
+            return true;
+        }
+
+        if (preg_match('/^#?[a-f0-9]{3,8}$/i', $trimmed)) {
+            return true;
+        }
+
+        if (preg_match('/^(rgba?\(|https?:\/\/|\/wp-content\/|data:image\/|[0-9.]+%?$)/i', $trimmed)) {
+            return true;
+        }
+
+        if (stripos($trimmed, '<svg') !== false || stripos($trimmed, '<use ') !== false) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

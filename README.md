@@ -6,7 +6,7 @@ MarkdownPress automatically generates Markdown versions of all your WordPress co
 
 ### Plugin Details
 - **Tested up to:** 6.7
-- **Stable tag:** 1.2.8
+- **Stable tag:** 1.2.9
 - **License:** GPLv2 or later
 - **License URI:** https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -52,6 +52,10 @@ You can access the markdown version of any page by either:
 Example: `curl -H "Accept: text/markdown" https://your-site.com/about/`
 
 ## Changelog
+
+= 1.2.9 =
+* Added Mioweb Base64 serialized content decoding as a fallback after normal HTML conversion.
+* Extracted only visible builder copy from decoded Mioweb payloads to avoid style/config noise.
 
 = 1.2.8 =
 * Fixed fatal error when on-the-fly markdown generation runs before rewrite globals are available.

@@ -445,6 +445,9 @@ class MDP_Admin
 
                 <p class="mdp-cache-dir-info">
                     <strong>Markdown files directory:</strong> <code><?php echo esc_html(MDP_CACHE_DIR); ?></code><br>
+                </p>
+
+                <p class="mdp-cache-dir-info">
                     <strong>URL access:</strong> You can view the Markdown version of any page by adding <code>?format=markdown</code> to its URL.
                 </p>
 
