@@ -3,7 +3,7 @@
  * Plugin Name: MarkdownPress
  * Plugin URI:  https://github.com/juditth/wordpress-to-markdown
  * Description: Creates a markdown mirror of your WordPress site. Serves content via Accept: text/markdown header, generates llms.txt for AI crawlers.
- * Version:     1.2.9
+ * Version:     1.3.0
  * Author:      Jitka Klingenbergová
  * Author URI:  https://vyladeny-web.cz/
  * License:     GPLv2 or later
@@ -16,14 +16,38 @@ if (!defined('ABSPATH')) {
 
 /* ───────────────────────────── Constants ───────────────────────────── */
 
-define('MDP_VERSION', '1.2.9');
+define('MDP_VERSION', '1.3.0');
 define('MDP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MDP_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('MDP_PLUGIN_FILE', __FILE__);
 
 // Where the markdown files live — inside wp-content/ for guaranteed write permissions.
 // Use filter 'mdp_cache_dir' to override in wp-config.php or a mu-plugin if needed.
-define('MDP_CACHE_DIR', apply_filters('mdp_cache_dir', WP_CONTENT_DIR . '/markdownpress/'));
+function mdp_get_default_cache_dir($blog_id = null)
+{
+    $base_dir = trailingslashit(WP_CONTENT_DIR) . 'markdownpress/';
+
+    if (!is_multisite()) {
+        return $base_dir;
+    }
+
+    $blog_id = $blog_id ? (int) $blog_id : get_current_blog_id();
+    $details = get_blog_details($blog_id);
+    $site_key = 'site-' . $blog_id;
+
+    if ($details && !empty($details->domain)) {
+        $site_key = sanitize_title($details->domain . '-' . trim($details->path, '/'));
+    }
+
+    return $base_dir . 'sites/' . $blog_id . '-' . $site_key . '/';
+}
+
+$mdp_default_cache_dir = apply_filters(
+    'mdp_cache_dir_for_site',
+    mdp_get_default_cache_dir(),
+    is_multisite() ? get_current_blog_id() : null
+);
+define('MDP_CACHE_DIR', apply_filters('mdp_cache_dir', $mdp_default_cache_dir));
 
 /* ───────────────────────────── Includes ───────────────────────────── */
 
@@ -105,8 +129,29 @@ function mdp_activate()
     if (false === $current_options) {
         update_option('mdp_options', mdp_get_options());
     }
+
+    update_option('mdp_version', MDP_VERSION);
 }
 register_activation_hook(__FILE__, 'mdp_activate');
+
+/**
+ * Run lightweight upgrade tasks after plugin files are updated.
+ */
+function mdp_maybe_upgrade()
+{
+    $installed_version = get_option('mdp_version');
+    if ($installed_version === MDP_VERSION) {
+        return;
+    }
+
+    if (!file_exists(MDP_CACHE_DIR)) {
+        wp_mkdir_p(MDP_CACHE_DIR);
+    }
+
+    MDP_Htaccess::add_rules();
+    update_option('mdp_version', MDP_VERSION);
+}
+add_action('admin_init', 'mdp_maybe_upgrade');
 
 /**
  * Plugin deactivation.

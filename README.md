@@ -6,7 +6,7 @@ MarkdownPress automatically generates Markdown versions of all your WordPress co
 
 ### Plugin Details
 - **Tested up to:** 6.7
-- **Stable tag:** 1.2.9
+- **Stable tag:** 1.3.0
 - **License:** GPLv2 or later
 - **License URI:** https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -26,7 +26,7 @@ MarkdownPress automatically generates Markdown versions of all your WordPress co
 ### Database / Storage
 MarkdownPress **does not use any custom database tables**. All data is stored in:
 1.  **WP Options**: Plugin settings are stored in a single `mdp_options` record.
-2.  **Filesystem**: Generated Markdown files, queue state, and status are stored in `wp-content/markdown-cache/`.
+2.  **Filesystem**: Generated Markdown files, queue state, and status are stored in `wp-content/markdownpress/`; multisite installs use a separate `sites/<blog-id>-<domain>/` subdirectory for each site.
 
 ### Update System
 This plugin includes an integrated update checker that connects to GitHub for updates. You don't need to manually upload new versions.
@@ -52,6 +52,10 @@ You can access the markdown version of any page by either:
 Example: `curl -H "Accept: text/markdown" https://your-site.com/about/`
 
 ## Changelog
+
+= 1.3.0 =
+* Added separate default cache directories for each site in WordPress multisite.
+* Added host-aware Apache rewrite rules so llms.txt and llms-full.txt are served from the matching site cache.
 
 = 1.2.9 =
 * Added Mioweb Base64 serialized content decoding as a fallback after normal HTML conversion.

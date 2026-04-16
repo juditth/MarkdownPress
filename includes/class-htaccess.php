@@ -68,6 +68,10 @@ class MDP_Htaccess
      */
     private static function generate_rules()
     {
+        if (is_multisite() && function_exists('get_sites')) {
+            return self::generate_multisite_rules();
+        }
+
         // Calculate the relative path from ABSPATH to the markdown files directory.
         $cache_rel = str_replace(ABSPATH, '', MDP_CACHE_DIR);
         $cache_rel = trim($cache_rel, '/');
@@ -136,6 +140,173 @@ class MDP_Htaccess
         $rules[] = '</IfModule>';
 
         return $rules;
+    }
+
+    /**
+     * Generate host-aware rewrite rules for all public sites in a multisite network.
+     */
+    private static function generate_multisite_rules()
+    {
+        $rules = array();
+        $rules[] = '<IfModule mod_rewrite.c>';
+        $rules[] = 'RewriteEngine On';
+        $rules[] = '';
+
+        $sites = get_sites(array(
+            'number' => 0,
+            'fields' => 'ids',
+            'deleted' => 0,
+            'archived' => 0,
+            'spam' => 0,
+        ));
+
+        foreach ($sites as $blog_id) {
+            $site = self::get_multisite_rule_site((int) $blog_id);
+            if (!$site) {
+                continue;
+            }
+            $rules = array_merge($rules, self::generate_multisite_site_rules($site));
+        }
+
+        $rules[] = '# Set proper headers when serving markdown';
+        $rules[] = '<IfModule mod_headers.c>';
+        $rules[] = '    Header set X-Content-Source "markdownpress" env=MDP';
+        $rules[] = '    Header set X-Robots-Tag "noindex" env=MDP';
+        $rules[] = '    Header set Cache-Control "public, max-age=3600" env=MDP';
+        $rules[] = '</IfModule>';
+
+        $rules[] = '</IfModule>';
+
+        return $rules;
+    }
+
+    /**
+     * Build rewrite metadata for one multisite blog.
+     */
+    private static function get_multisite_rule_site($blog_id)
+    {
+        $details = get_blog_details($blog_id);
+        if (!$details || empty($details->domain)) {
+            return null;
+        }
+
+        $cache_dir = function_exists('mdp_get_default_cache_dir') ? mdp_get_default_cache_dir($blog_id) : MDP_CACHE_DIR;
+        $cache_dir = apply_filters('mdp_cache_dir_for_site', $cache_dir, $blog_id);
+        $path = isset($details->path) ? $details->path : '/';
+
+        return array(
+            'label' => $details->domain . $path,
+            'host_regex' => '^' . preg_quote($details->domain, '#') . '$',
+            'cache_rel' => self::cache_dir_to_relative_path($cache_dir),
+            'path_prefix' => trim($path, '/'),
+            'home_rule' => self::home_rule_from_path($path),
+        );
+    }
+
+    /**
+     * Generate host-aware rewrite rules for one multisite blog.
+     */
+    private static function generate_multisite_site_rules($site)
+    {
+        $host_cond = 'RewriteCond %{HTTP_HOST} ' . $site['host_regex'] . ' [NC]';
+        $cache_rel = $site['cache_rel'];
+        $llms_rule = self::site_file_rule($site['path_prefix'], 'llms\.txt');
+        $llms_full_rule = self::site_file_rule($site['path_prefix'], 'llms-full\.txt');
+        $rules = array();
+
+        $rules[] = '# Site: ' . $site['label'];
+        $rules[] = '# Serve llms.txt directly';
+        $rules[] = $host_cond;
+        $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '/llms.txt -f';
+        $rules[] = 'RewriteRule ' . $llms_rule . ' /' . $cache_rel . '/llms.txt [L,T=text/plain;charset=UTF-8,E=MDP:1]';
+        $rules[] = $host_cond;
+        $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '/llms-full.txt -f';
+        $rules[] = 'RewriteRule ' . $llms_full_rule . ' /' . $cache_rel . '/llms-full.txt [L,T=text/plain;charset=UTF-8,E=MDP:1]';
+        $rules[] = '';
+
+        $rules[] = '# Serve markdown when Accept header contains text/markdown';
+        $rules[] = $host_cond;
+        $rules[] = 'RewriteCond %{HTTP_ACCEPT} text/markdown [NC,OR]';
+        $rules[] = 'RewriteCond %{HTTP_ACCEPT} text/x-markdown [NC,OR]';
+        $rules[] = 'RewriteCond %{HTTP_ACCEPT} application/markdown [NC]';
+        $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '%{REQUEST_URI}index.md -f';
+        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1index.md [L,T=text/markdown;charset=UTF-8,E=MDP:1]';
+        $rules[] = '';
+
+        $rules[] = '# Handle URLs without trailing slash';
+        $rules[] = $host_cond;
+        $rules[] = 'RewriteCond %{HTTP_ACCEPT} text/markdown [NC,OR]';
+        $rules[] = 'RewriteCond %{HTTP_ACCEPT} text/x-markdown [NC,OR]';
+        $rules[] = 'RewriteCond %{HTTP_ACCEPT} application/markdown [NC]';
+        $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '%{REQUEST_URI}/index.md -f';
+        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1/index.md [L,T=text/markdown;charset=UTF-8,E=MDP:1]';
+        $rules[] = '';
+
+        $rules[] = '# Serve markdown when ?format=markdown is in the query string';
+        $rules[] = $host_cond;
+        $rules[] = 'RewriteCond %{QUERY_STRING} (^|&)format=markdown($|&) [NC]';
+        $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '%{REQUEST_URI}index.md -f';
+        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1index.md [L,T=text/markdown;charset=UTF-8,E=MDP:1]';
+        $rules[] = '';
+
+        $rules[] = $host_cond;
+        $rules[] = 'RewriteCond %{QUERY_STRING} (^|&)format=markdown($|&) [NC]';
+        $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '%{REQUEST_URI}/index.md -f';
+        $rules[] = 'RewriteRule ^(.*)$ /' . $cache_rel . '/$1/index.md [L,T=text/markdown;charset=UTF-8,E=MDP:1]';
+        $rules[] = '';
+
+        $rules[] = '# Homepage';
+        $rules[] = $host_cond;
+        $rules[] = 'RewriteCond %{HTTP_ACCEPT} text/markdown [NC,OR]';
+        $rules[] = 'RewriteCond %{HTTP_ACCEPT} text/x-markdown [NC,OR]';
+        $rules[] = 'RewriteCond %{HTTP_ACCEPT} application/markdown [NC,OR]';
+        $rules[] = 'RewriteCond %{QUERY_STRING} (^|&)format=markdown($|&) [NC]';
+        $rules[] = 'RewriteCond %{DOCUMENT_ROOT}/' . $cache_rel . '/index.md -f';
+        $rules[] = 'RewriteRule ' . $site['home_rule'] . ' /' . $cache_rel . '/index.md [L,T=text/markdown;charset=UTF-8,E=MDP:1]';
+        $rules[] = '';
+
+        return $rules;
+    }
+
+    /**
+     * Convert an absolute cache directory to a document-root relative path.
+     */
+    private static function cache_dir_to_relative_path($cache_dir)
+    {
+        $cache_dir = wp_normalize_path($cache_dir);
+        $abspath = wp_normalize_path(ABSPATH);
+
+        if (strpos($cache_dir, $abspath) === 0) {
+            $cache_dir = substr($cache_dir, strlen($abspath));
+        }
+
+        return trim($cache_dir, '/');
+    }
+
+    /**
+     * Build a rewrite pattern for the site's homepage.
+     */
+    private static function home_rule_from_path($path)
+    {
+        $path = trim($path, '/');
+        if ($path === '') {
+            return '^$';
+        }
+
+        return '^' . preg_quote($path, '#') . '/?$';
+    }
+
+    /**
+     * Build a rewrite pattern for a site-root file such as llms.txt.
+     */
+    private static function site_file_rule($path_prefix, $file_pattern)
+    {
+        $path_prefix = trim($path_prefix, '/');
+        if ($path_prefix === '') {
+            return '^' . $file_pattern . '$';
+        }
+
+        return '^' . preg_quote($path_prefix, '#') . '/' . $file_pattern . '$';
     }
 
     /**
