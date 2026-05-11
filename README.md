@@ -6,7 +6,7 @@ MarkdownPress automatically generates Markdown versions of all your WordPress co
 
 ### Plugin Details
 - **Tested up to:** 6.7
-- **Stable tag:** 1.3.1
+- **Stable tag:** 1.4.0
 - **License:** GPLv2 or later
 - **License URI:** https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -52,6 +52,12 @@ You can access the markdown version of any page by either:
 Example: `curl -H "Accept: text/markdown" https://your-site.com/about/`
 
 ## Changelog
+
+= 1.4.0 =
+* Added optional JSON-LD schema output for HTTP Fetch rendering.
+* Filtered low-value BreadcrumbList schema from appended JSON-LD blocks.
+* Hardened admin AJAX status access and cache path handling.
+* Restricted sitemap imports to same-site URLs.
 
 = 1.3.1 =
 * Fixed browser encoding by routing ?format=markdown through PHP with explicit UTF-8 headers.

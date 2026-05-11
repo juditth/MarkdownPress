@@ -249,7 +249,9 @@ class MDP_Generator
         $urls = $this->parse_sitemap($body);
 
         foreach ($urls as $url) {
-            $items[] = array('type' => 'sitemap_url', 'url' => $url);
+            if ($this->is_site_url($url)) {
+                $items[] = array('type' => 'sitemap_url', 'url' => $url);
+            }
         }
 
         return $items;
@@ -275,8 +277,14 @@ class MDP_Generator
         $sitemaps = $xml->xpath('//sm:sitemap/sm:loc');
         if (!empty($sitemaps)) {
             foreach ($sitemaps as $sitemap_loc) {
-                $sub_response = wp_remote_get((string) $sitemap_loc, array(
+                $sub_sitemap_url = (string) $sitemap_loc;
+                if (!$this->is_site_url($sub_sitemap_url)) {
+                    continue;
+                }
+
+                $sub_response = wp_remote_get($sub_sitemap_url, array(
                     'timeout' => 15,
+                    'user-agent' => 'markdownpress/1.0',
                 ));
                 if (!is_wp_error($sub_response)) {
                     $sub_body = wp_remote_retrieve_body($sub_response);
@@ -290,11 +298,29 @@ class MDP_Generator
         $locs = $xml->xpath('//sm:url/sm:loc');
         if (!empty($locs)) {
             foreach ($locs as $loc) {
-                $urls[] = (string) $loc;
+                $url = (string) $loc;
+                if ($this->is_site_url($url)) {
+                    $urls[] = $url;
+                }
             }
         }
 
         return $urls;
+    }
+
+    /**
+     * Check whether a URL belongs to the current site.
+     */
+    private function is_site_url($url)
+    {
+        $url_parts = wp_parse_url($url);
+        $home_parts = wp_parse_url(home_url('/'));
+
+        if (empty($url_parts['host']) || empty($home_parts['host'])) {
+            return false;
+        }
+
+        return strtolower($url_parts['host']) === strtolower($home_parts['host']);
     }
 
     /**
@@ -324,7 +350,7 @@ class MDP_Generator
 
         $markdown = MDP_Html_To_Markdown::convert($html);
         if (empty(trim($markdown))) {
-            $converter->log_error("Markdown conversion resulted in empty content for URL: {$url}");
+            $converter->set_last_error("Markdown conversion resulted in empty content for URL: {$url}");
             return false;
         }
 
@@ -351,11 +377,9 @@ class MDP_Generator
             wp_mkdir_p($dir);
         }
 
-        $result = (bool) file_put_contents($file_path, MDP_Html_To_Markdown::normalize_text($fm . $markdown));
-        if (!$result) {
-            $converter->log_error("Failed to write markdown file to: {$file_path}");
-        }
-        return $result;
+        $content = $converter->append_json_schema($fm . $markdown, $url);
+
+        return (bool) file_put_contents($file_path, MDP_Html_To_Markdown::normalize_text($content));
     }
 
     /**

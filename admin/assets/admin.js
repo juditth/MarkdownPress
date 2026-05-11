@@ -7,6 +7,16 @@
 
     var polling = null;
 
+    function updateJsonSchemaAvailability() {
+        var isHttpFetch = $('#mdp-content-method').val() === 'http';
+        $('#mdp-append-json-schema')
+            .prop('disabled', !isHttpFetch)
+            .prop('checked', isHttpFetch ? $('#mdp-append-json-schema').prop('checked') : false);
+    }
+
+    $('#mdp-content-method').on('change', updateJsonSchemaAvailability);
+    updateJsonSchemaAvailability();
+
     // Generate Now button.
     $('#mdp-generate-now').on('click', function(e) {
         e.preventDefault();

@@ -3,7 +3,7 @@ Contributors: juditth
 Tags: markdown, ai, llms, sitemap, bricks, elementor
 Requires at least: 5.7
 Tested up to: 6.7
-Stable tag: 1.3.1
+Stable tag: 1.4.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -33,6 +33,12 @@ MarkdownPress automatically generates Markdown versions of all your WordPress co
 4. Click **Generate Now** to build your first markdown mirror.
 
 == Changelog ==
+
+= 1.4.0 =
+* Added optional JSON-LD schema output for HTTP Fetch rendering.
+* Filtered low-value BreadcrumbList schema from appended JSON-LD blocks.
+* Hardened admin AJAX status access and cache path handling.
+* Restricted sitemap imports to same-site URLs.
 
 = 1.3.1 =
 * Fixed browser encoding by routing ?format=markdown through PHP with explicit UTF-8 headers.

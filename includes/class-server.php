@@ -68,7 +68,7 @@ class MDP_Server
         $request_uri = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '/';
         // Remove query string.
         $path = strtok($request_uri, '?');
-        $path = trim($path, '/');
+        $path = self::sanitize_request_path($path);
 
         if (empty($path)) {
             $file = MDP_CACHE_DIR . 'index.md';
@@ -165,14 +165,17 @@ class MDP_Server
      */
     private static function get_current_request_url()
     {
-        $http_host = isset($_SERVER['HTTP_HOST']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_HOST'])) : '';
         $request_uri = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
 
-        if (!$http_host || !$request_uri) {
+        if (!$request_uri) {
             return '';
         }
 
-        return (is_ssl() ? 'https://' : 'http://') . $http_host . $request_uri;
+        $path = wp_parse_url($request_uri, PHP_URL_PATH);
+        $query = wp_parse_url($request_uri, PHP_URL_QUERY);
+        $path = $path ? $path : '/';
+
+        return home_url($path . ($query ? '?' . $query : ''));
     }
 
     /**
@@ -249,6 +252,7 @@ class MDP_Server
             $content .= "---\n\n";
         }
         $content .= $markdown;
+        $content = $converter->append_json_schema($content, $url);
 
         $file = $converter->url_to_cache_path($url);
         $dir = dirname($file);
@@ -257,6 +261,37 @@ class MDP_Server
         }
 
         return file_put_contents($file, MDP_Html_To_Markdown::normalize_text($content)) ? $file : '';
+    }
+
+    /**
+     * Normalize a request path before mapping it to the cache directory.
+     */
+    private static function sanitize_request_path($path)
+    {
+        $path = str_replace('\\', '/', (string) $path);
+        $path = trim($path, '/');
+        if ($path === '') {
+            return '';
+        }
+
+        $safe_segments = array();
+        foreach (explode('/', $path) as $segment) {
+            $decoded = rawurldecode($segment);
+            if ($decoded === '' || $decoded === '.' || $decoded === '..') {
+                continue;
+            }
+
+            if (strpos($decoded, '/') !== false || strpos($decoded, '\\') !== false) {
+                continue;
+            }
+
+            $segment = preg_replace('/[\x00-\x1F\x7F\\\\]/', '', $segment);
+            if ($segment !== '') {
+                $safe_segments[] = $segment;
+            }
+        }
+
+        return implode('/', $safe_segments);
     }
 
     /**

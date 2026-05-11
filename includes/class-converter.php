@@ -21,11 +21,24 @@ class MDP_Converter
     private $last_error = '';
 
     /**
+     * Full HTML bodies fetched through HTTP during the current conversion run.
+     */
+    private $http_bodies = array();
+
+    /**
      * Get the last error message.
      */
     public function get_last_error()
     {
         return $this->last_error;
+    }
+
+    /**
+     * Set the last error message for callers that use converter helpers.
+     */
+    public function set_last_error($message)
+    {
+        $this->last_error = $message;
     }
 
     /**
@@ -75,6 +88,7 @@ class MDP_Converter
         }
 
         $full_content = MDP_Html_To_Markdown::normalize_text($frontmatter . $markdown);
+        $full_content = $this->append_json_schema($full_content, $permalink);
 
         // Determine file path from URL.
         $file_path = $this->url_to_cache_path($permalink);
@@ -167,6 +181,8 @@ class MDP_Converter
             wp_mkdir_p($dir);
         }
 
+        $md = $this->append_json_schema($md, $term_link);
+
         return (bool) file_put_contents($file_path, MDP_Html_To_Markdown::normalize_text($md));
     }
 
@@ -235,6 +251,8 @@ class MDP_Converter
             wp_mkdir_p($dir);
         }
 
+        $md = $this->append_json_schema($md, $author_url);
+
         return (bool) file_put_contents($file_path, MDP_Html_To_Markdown::normalize_text($md));
     }
 
@@ -288,6 +306,8 @@ class MDP_Converter
         }
 
         $file_path = MDP_CACHE_DIR . 'index.md';
+        $md = $this->append_json_schema($md, $home_url);
+
         return (bool) file_put_contents($file_path, MDP_Html_To_Markdown::normalize_text($md));
     }
 
@@ -397,6 +417,8 @@ class MDP_Converter
             return '';
         }
 
+        $this->http_bodies[$url] = $body;
+
         $extracted = $this->extract_main_content($body);
         if (empty(trim(wp_strip_all_tags($extracted)))) {
             $this->last_error = "HTTP Fetch succeeded, but content extraction (<body>) resulted in empty text.";
@@ -432,6 +454,169 @@ class MDP_Converter
         return $body;
     }
 
+    /**
+     * Append JSON-LD schema blocks published in the public page HTML.
+     *
+     * MarkdownPress does not invent schema from post metadata. It only appends
+     * schema that already exists in HTML fetched through the HTTP Fetch renderer.
+     */
+    public function append_json_schema($markdown, $url)
+    {
+        $options = mdp_get_options();
+        if (empty($options['append_json_schema']) || empty($url)) {
+            return $markdown;
+        }
+
+        if (($options['content_method'] ?? '') !== 'http') {
+            return $markdown;
+        }
+
+        if (empty($this->http_bodies[$url])) {
+            return $markdown;
+        }
+
+        $schemas = $this->extract_json_schema_blocks($this->http_bodies[$url]);
+        if (empty($schemas)) {
+            return $markdown;
+        }
+
+        $appendix = "\n\n## JSON Schema\n\n";
+        foreach ($schemas as $schema) {
+            $appendix .= "```json\n" . $schema . "\n```\n\n";
+        }
+
+        return rtrim($markdown) . $appendix;
+    }
+
+    /**
+     * Extract and normalize JSON-LD blocks from HTML.
+     */
+    private function extract_json_schema_blocks($html)
+    {
+        $schemas = array();
+
+        if (preg_match_all('/<script\b(?=[^>]*\btype=["\']?application\/ld\+json\b[^>]*>)(?:[^>]*)>(.*?)<\/script>/is', $html, $matches)) {
+            foreach ($matches[1] as $raw_json) {
+                $json = $this->normalize_json_schema_block($raw_json);
+                if ($json !== '') {
+                    $schemas[] = $json;
+                }
+            }
+        }
+
+        $doc = new DOMDocument();
+
+        libxml_use_internal_errors(true);
+        $doc->loadHTML('<?xml encoding="UTF-8">' . $html);
+        libxml_clear_errors();
+
+        foreach ($doc->getElementsByTagName('script') as $script) {
+            $type = strtolower(trim($script->getAttribute('type')));
+            if (strpos($type, 'application/ld+json') !== 0) {
+                continue;
+            }
+
+            $json = $this->normalize_json_schema_block($script->textContent);
+            if ($json === '') {
+                continue;
+            }
+
+            $schemas[] = $json;
+        }
+
+        return array_values(array_unique($schemas));
+    }
+
+    /**
+     * Normalize one JSON-LD script block and apply schema filtering.
+     */
+    private function normalize_json_schema_block($raw_json)
+    {
+        $json = trim(html_entity_decode($raw_json, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        if ($json === '') {
+            return '';
+        }
+
+        $decoded = json_decode($json, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return $json;
+        }
+
+        $decoded = $this->remove_ignored_schema_types($decoded);
+        if (empty($decoded)) {
+            return '';
+        }
+
+        return wp_json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Remove low-value schema types from JSON-LD before appending it.
+     */
+    private function remove_ignored_schema_types($schema)
+    {
+        $ignored_types = apply_filters('mdp_ignored_json_schema_types', array('BreadcrumbList'));
+
+        if (isset($schema['@graph']) && is_array($schema['@graph'])) {
+            $schema['@graph'] = array_values(array_filter($schema['@graph'], function ($item) use ($ignored_types) {
+                return !$this->schema_has_ignored_type($item, $ignored_types);
+            }));
+
+            if (empty($schema['@graph'])) {
+                return array();
+            }
+
+            return $schema;
+        }
+
+        if ($this->is_list_array($schema)) {
+            $schema = array_values(array_filter($schema, function ($item) use ($ignored_types) {
+                return !$this->schema_has_ignored_type($item, $ignored_types);
+            }));
+        }
+
+        if ($this->schema_has_ignored_type($schema, $ignored_types)) {
+            return array();
+        }
+
+        return $schema;
+    }
+
+    /**
+     * Check whether a JSON-LD item has a type that should be skipped.
+     */
+    private function schema_has_ignored_type($schema, $ignored_types)
+    {
+        if (!is_array($schema) || empty($schema['@type'])) {
+            return false;
+        }
+
+        $types = is_array($schema['@type']) ? $schema['@type'] : array($schema['@type']);
+        foreach ($types as $type) {
+            if (in_array($type, $ignored_types, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Detect arrays that represent a JSON list rather than an object.
+     */
+    private function is_list_array($value)
+    {
+        if (!is_array($value)) {
+            return false;
+        }
+
+        if (function_exists('array_is_list')) {
+            return array_is_list($value);
+        }
+
+        return array_keys($value) === range(0, count($value) - 1);
+    }
+
     /* ───────────────────────────── Helpers ───────────────────────────── */
 
     /**
@@ -442,7 +627,7 @@ class MDP_Converter
     {
         $parsed = wp_parse_url($url);
         $path = isset($parsed['path']) ? $parsed['path'] : '/';
-        $path = trim($path, '/');
+        $path = $this->sanitize_url_path($path);
 
         if (empty($path)) {
             return MDP_CACHE_DIR . 'index.md';
@@ -452,6 +637,37 @@ class MDP_Converter
         $path = preg_replace('/\.(html?|php)$/i', '', $path);
 
         return MDP_CACHE_DIR . $path . '/index.md';
+    }
+
+    /**
+     * Normalize a URL path into safe cache path segments.
+     */
+    private function sanitize_url_path($path)
+    {
+        $path = str_replace('\\', '/', (string) $path);
+        $path = trim($path, '/');
+        if ($path === '') {
+            return '';
+        }
+
+        $safe_segments = array();
+        foreach (explode('/', $path) as $segment) {
+            $decoded = rawurldecode($segment);
+            if ($decoded === '' || $decoded === '.' || $decoded === '..') {
+                continue;
+            }
+
+            if (strpos($decoded, '/') !== false || strpos($decoded, '\\') !== false) {
+                continue;
+            }
+
+            $segment = preg_replace('/[\x00-\x1F\x7F\\\\]/', '', $segment);
+            if ($segment !== '') {
+                $safe_segments[] = $segment;
+            }
+        }
+
+        return implode('/', $safe_segments);
     }
 
     /**

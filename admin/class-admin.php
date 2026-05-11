@@ -106,6 +106,7 @@ class MDP_Admin
         $sanitized['frontmatter'] = !empty($input['frontmatter']);
         $sanitized['regenerate_on_save'] = !empty($input['regenerate_on_save']);
         $sanitized['content_method'] = in_array($input['content_method'] ?? '', array('filter', 'http', 'both')) ? $input['content_method'] : 'filter';
+        $sanitized['append_json_schema'] = $sanitized['content_method'] === 'http' && !empty($input['append_json_schema']);
 
         // Reschedule cron if time changed.
         mdp_schedule_cron();
@@ -125,6 +126,7 @@ class MDP_Admin
         $cache_files = $this->count_cache_files();
         $next_cron = wp_next_scheduled('mdp_cron_generate');
         $is_processing = MDP_Generator::has_queue();
+        $json_schema_available = $options['content_method'] === 'http';
         ?>
         <div class="wrap mdp-wrap">
             <h1>
@@ -316,7 +318,7 @@ class MDP_Admin
                             <tr>
                                 <th>Rendering method</th>
                                 <td>
-                                    <select name="mdp_options[content_method]">
+                                    <select name="mdp_options[content_method]" id="mdp-content-method">
                                         <option value="both" <?php selected($options['content_method'], 'both'); ?>>Combined
                                             (Smart Fallback)</option>
                                         <option value="filter" <?php selected($options['content_method'], 'filter'); ?>>
@@ -340,6 +342,70 @@ class MDP_Admin
                                             — <strong>Most reliable method for sites using ACF fields, WooCommerce, or custom templates (CPTs).</strong>
                                         </div>
                                     </div>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <!-- Output settings -->
+                    <div class="mdp-settings-section">
+                        <h2>Output</h2>
+                        <table class="form-table">
+                            <tr>
+                                <th>YAML frontmatter</th>
+                                <td>
+                                    <label>
+                                        <input type="checkbox" name="mdp_options[frontmatter]" value="1" <?php checked($options['frontmatter']); ?> />
+                                        Include title, URL, dates, categories, tags in each markdown file
+                                    </label>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>JSON schema</th>
+                                <td>
+                                    <label>
+                                        <input type="checkbox" id="mdp-append-json-schema" name="mdp_options[append_json_schema]" value="1" <?php checked($json_schema_available && $options['append_json_schema']); ?> <?php disabled(!$json_schema_available); ?> />
+                                        Append JSON schema to the end of each markdown file
+                                    </label>
+                                    <p class="description">
+                                        Available only with the HTTP Fetch rendering method. Uses existing
+                                        <code>application/ld+json</code> blocks from the rendered public page HTML.
+                                        Pages without JSON-LD schema are left unchanged.
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Generate _all.md</th>
+                                <td>
+                                    <label>
+                                        <input type="checkbox" name="mdp_options[generate_all_md]" value="1" <?php checked($options['generate_all_md']); ?> />
+                                        Concatenate all pages into a single file (for LLM context windows)
+                                    </label>
+                                    <p class="description">Warning: can be very large on big sites.</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Generate llms.txt</th>
+                                <td>
+                                    <label>
+                                        <input type="checkbox" name="mdp_options[generate_llms_txt]" value="1" <?php checked($options['generate_llms_txt']); ?> />
+                                        Generate <code>/llms.txt</code> and <code>/llms-full.txt</code>
+                                    </label>
+                                    <p class="description">Like robots.txt but for LLMs. Describes your site structure for AI
+                                        crawlers.</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Exclude URLs</th>
+                                <td>
+                                    <textarea name="mdp_options[exclude_urls]" rows="5"
+                                        class="large-text code"><?php echo esc_textarea($options['exclude_urls']); ?></textarea>
+                                    <p class="description">One URL pattern per line. Pages matching any pattern will be
+                                        excluded.<br>
+                                        Built-in exclusions: <code>/wp-admin</code>, <code>/wp-login</code>,
+                                        <code>/wp-json</code>, <code>/feed</code>, <code>/cart</code>, <code>/checkout</code>,
+                                        <code>/my-account</code>
+                                    </p>
                                 </td>
                             </tr>
                         </table>
@@ -387,56 +453,6 @@ class MDP_Admin
                                         <input type="checkbox" name="mdp_options[regenerate_on_save]" value="1" <?php checked($options['regenerate_on_save']); ?> />
                                         Regenerate markdown when a post is published/updated
                                     </label>
-                                </td>
-                            </tr>
-                        </table>
-                    </div>
-
-                    <!-- Output settings -->
-                    <div class="mdp-settings-section">
-                        <h2>Output</h2>
-                        <table class="form-table">
-                            <tr>
-                                <th>YAML frontmatter</th>
-                                <td>
-                                    <label>
-                                        <input type="checkbox" name="mdp_options[frontmatter]" value="1" <?php checked($options['frontmatter']); ?> />
-                                        Include title, URL, dates, categories, tags in each markdown file
-                                    </label>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>Generate _all.md</th>
-                                <td>
-                                    <label>
-                                        <input type="checkbox" name="mdp_options[generate_all_md]" value="1" <?php checked($options['generate_all_md']); ?> />
-                                        Concatenate all pages into a single file (for LLM context windows)
-                                    </label>
-                                    <p class="description">Warning: can be very large on big sites.</p>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>Generate llms.txt</th>
-                                <td>
-                                    <label>
-                                        <input type="checkbox" name="mdp_options[generate_llms_txt]" value="1" <?php checked($options['generate_llms_txt']); ?> />
-                                        Generate <code>/llms.txt</code> and <code>/llms-full.txt</code>
-                                    </label>
-                                    <p class="description">Like robots.txt but for LLMs. Describes your site structure for AI
-                                        crawlers.</p>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>Exclude URLs</th>
-                                <td>
-                                    <textarea name="mdp_options[exclude_urls]" rows="5"
-                                        class="large-text code"><?php echo esc_textarea($options['exclude_urls']); ?></textarea>
-                                    <p class="description">One URL pattern per line. Pages matching any pattern will be
-                                        excluded.<br>
-                                        Built-in exclusions: <code>/wp-admin</code>, <code>/wp-login</code>,
-                                        <code>/wp-json</code>, <code>/feed</code>, <code>/cart</code>, <code>/checkout</code>,
-                                        <code>/my-account</code>
-                                    </p>
                                 </td>
                             </tr>
                         </table>
@@ -573,6 +589,10 @@ class MDP_Admin
     public function ajax_get_status()
     {
         check_ajax_referer('mdp_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Permission denied');
+        }
+
         $status = MDP_Generator::get_status();
         $remaining = MDP_Generator::get_queue_count();
 
