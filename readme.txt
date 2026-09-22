@@ -3,7 +3,7 @@ Contributors: juditth
 Tags: markdown, ai, llms, sitemap, bricks, elementor
 Requires at least: 5.7
 Tested up to: 6.7
-Stable tag: 1.4.0
+Stable tag: 1.4.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -33,6 +33,11 @@ MarkdownPress automatically generates Markdown versions of all your WordPress co
 4. Click **Generate Now** to build your first markdown mirror.
 
 == Changelog ==
+
+= 1.4.1 =
+* Fixed Divi shortcodes leaking into llms.txt descriptions and YAML excerpts.
+* Generate automatic excerpts from converted content, reusing cached Markdown and preserving manual excerpts.
+* Regenerate Markdown files after updating to refresh existing excerpts and llms.txt.
 
 = 1.4.0 =
 * Added optional JSON-LD schema output for HTTP Fetch rendering.

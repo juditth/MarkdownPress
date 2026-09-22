@@ -51,11 +51,11 @@ class MDP_Llms_Txt
 
         if (!empty($pages)) {
             $txt .= "## Main Sections\n\n";
+            $converter = new MDP_Converter();
             foreach ($pages as $page) {
                 $url = get_permalink($page->ID);
                 $md_url = $url . (strpos($url, '?') !== false ? '&' : '?') . 'format=markdown';
-                $excerpt = $page->post_excerpt ?: wp_trim_words(strip_shortcodes($page->post_content), 20, '...');
-                $excerpt = wp_strip_all_tags($excerpt);
+                $excerpt = $converter->get_post_excerpt($page, 20);
                 $txt .= "- [{$page->post_title}]({$md_url}): {$excerpt}\n";
             }
             $txt .= "\n";

@@ -84,7 +84,7 @@ class MDP_Converter
         // Build frontmatter.
         $frontmatter = '';
         if ($options['frontmatter']) {
-            $frontmatter = $this->build_frontmatter($post);
+            $frontmatter = $this->build_frontmatter($post, $markdown);
         }
 
         $full_content = MDP_Html_To_Markdown::normalize_text($frontmatter . $markdown);
@@ -671,9 +671,59 @@ class MDP_Converter
     }
 
     /**
+     * Build a plain-text excerpt from explicit copy or the converted page body.
+     * Reuse cached Markdown for summaries so HTTP-rendered builder content does
+     * not fall back to the original post_content (or require another request).
+     */
+    public function get_post_excerpt(WP_Post $post, $words = 30, $markdown = null)
+    {
+        if (trim($post->post_excerpt) !== '') {
+            $excerpt = self::excerpt_text(MDP_Html_To_Markdown::convert($post->post_excerpt));
+            if ($excerpt !== '') {
+                return $excerpt;
+            }
+        }
+
+        if ($markdown === null) {
+            $path = $this->url_to_cache_path(get_permalink($post->ID));
+            if (is_readable($path)) {
+                $markdown = file_get_contents($path);
+            }
+            if ($markdown === null || $markdown === false) {
+                $options = mdp_get_options();
+                $html = $this->get_rendered_content($post, $options['content_method']);
+                $markdown = MDP_Html_To_Markdown::convert($html);
+            }
+        }
+
+        // Metadata and the optional schema appendix are not page copy.
+        $markdown = preg_replace('/\A---\R.*?\R---(?:\R|$)/s', '', $markdown);
+        $markdown = preg_replace('/\R## JSON Schema\R.*\z/s', '', $markdown);
+
+        return wp_trim_words(self::excerpt_text($markdown), $words, '...');
+    }
+
+    /**
+     * Remove formatting without losing text nested inside Divi shortcodes.
+     */
+    private static function excerpt_text($markdown)
+    {
+        // Divi tags may be unregistered in admin/cron requests. Do not rely on
+        // strip_shortcodes(), which can also remove the enclosed page copy.
+        $text = preg_replace('/\[\/?et_pb_[a-z0-9_]+\b(?:[^\]"\']|"[^"]*"|\'[^\']*\')*\]/i', ' ', $markdown);
+        $text = preg_replace('/!\[([^\]]*)\]\([^\n]*?\)/', '$1', $text);
+        $text = preg_replace('/\[([^\]]+)\]\([^\n]*?\)/', '$1', $text);
+        $text = preg_replace('/^\s{0,3}(?:#{1,6}\s+|>\s*|[-+*]\s+|\d+\.\s+)/m', '', $text);
+        $text = str_replace(array('**', '__', '`'), '', $text);
+        $text = html_entity_decode(wp_strip_all_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/[\s\x{00A0}]+/u', ' ', $text);
+        return trim(MDP_Html_To_Markdown::normalize_text($text));
+    }
+
+    /**
      * Build YAML frontmatter for a post.
      */
-    private function build_frontmatter(WP_Post $post)
+    private function build_frontmatter(WP_Post $post, $markdown)
     {
         $fm = "---\n";
         $fm .= 'title: "' . $this->escape_yaml($post->post_title) . '"' . "\n";
@@ -689,7 +739,7 @@ class MDP_Converter
         }
 
         // Excerpt / meta description.
-        $excerpt = $post->post_excerpt ?: wp_trim_words($post->post_content, 30);
+        $excerpt = $this->get_post_excerpt($post, 30, $markdown);
         $fm .= 'excerpt: "' . $this->escape_yaml($excerpt) . '"' . "\n";
 
         // Categories.

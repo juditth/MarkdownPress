@@ -6,7 +6,7 @@ MarkdownPress automatically generates Markdown versions of all your WordPress co
 
 ### Plugin Details
 - **Tested up to:** 6.7
-- **Stable tag:** 1.4.0
+- **Stable tag:** 1.4.1
 - **License:** GPLv2 or later
 - **License URI:** https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -52,6 +52,11 @@ You can access the markdown version of any page by either:
 Example: `curl -H "Accept: text/markdown" https://your-site.com/about/`
 
 ## Changelog
+
+= 1.4.1 =
+* Fixed Divi shortcodes leaking into llms.txt descriptions and YAML excerpts.
+* Generate automatic excerpts from converted content, reusing cached Markdown and preserving manual excerpts.
+* Regenerate Markdown files after updating to refresh existing excerpts and llms.txt.
 
 = 1.4.0 =
 * Added optional JSON-LD schema output for HTTP Fetch rendering.
